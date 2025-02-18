@@ -1,0 +1,7 @@
+# QuestaSim project files
+work/
+*.mpf
+*.mti
+*.wlf
+transcript
+wlft*
