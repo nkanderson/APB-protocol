@@ -4,6 +4,9 @@ Implementation of the AMBA Advanced Peripheral Bus (APB) protocol using SystemVe
 
 ## Running the Program
 
+**TODO: Is this the preferred workflow?**
+**TODO: Run verible-verilog-lint and verible-verilog-format on the included files**
+
 1. **Run Simulation**
 
 Option using `make`:
