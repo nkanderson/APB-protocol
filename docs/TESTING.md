@@ -47,3 +47,119 @@
     1. Concurrent read and write  
       a. Drive `PWDATA` while ensuring `PWRITE` signal is low  
       b. Should result in a successful read
+
+### Protection unit support
+
+Testing the `PPROT` signals will entail a shared memory map between the design under test and the testbench. The memory map will designate specific memory blocks as having certain characteristics. For example, a boot ROM section may be designated as secure. A system configuration section may be privileged access only. There may also be different sections designated as data versus instructions.
+
+Our testing strategy will focus on checking each protection bit with read and write transactions. We will hold on testing combinations of protection bits for now. We will also assume prior tests cover the case of reading / writing to regions *not* designated as privileged or secure.
+
+1. **Privileged access** (`PPROT[0]`)
+
+    (1) Attempt *invalid read* to privileged region  
+    1. Ensure `PPROT[0]` is low
+    1. Attempt a typical read transaction to an address in a privileged region
+    1. Confirm that `SLVERR` is asserted
+    1. Confirm data on `PRDATA` is masked or zeroed (TODO: Maybe this it should be equal to `z`?)
+
+    (2) Attempt *valid read* to privileged region  
+    1. Ensure `PPROT[0]` is high
+    1. Attempt a typical read transaction to an address in a privileged region
+    1. Confirm that `SLVERR` is **not** asserted
+    1. Confirm data on `PRDATA` is valid
+
+    (3) Attempt *invalid write* to privileged region  
+    1. Perform a *valid read* to an address in a privileged region and save retrieved value
+    1. Ensure `PPROT[0]` is low
+    1. Attempt a typical write transaction to the address used above, using a different value than the one retrieved (maybe simply modify the retrieved value).
+    1. Confirm that `SLVERR` is asserted
+    1. Perform a *valid read* to the same address and save retrieved value. Confirm the newly retrieved value is the same as the original retrieved value.
+
+    (4) Attempt *valid write* to privileged region  
+    1. Perform a *valid read* to an address in a privileged region and save retrieved value
+    1. Ensure `PPROT[0]` is high
+    1. Attempt a typical write transaction to the address used above, using a different value than the one retrieved (maybe simply modify the retrieved value).
+    1. Confirm that `SLVERR` is **not** asserted
+    1. Perform a *valid read* to the same address and save retrieved value. Confirm the newly retrieved value is different from the original retrieved value.
+
+2. **Secure access** (`PPROT[1]`)
+
+    (1) Attempt *invalid read* to secure region  
+    1. Ensure `PPROT[1]` is high (non-secure)
+    1. Attempt a typical read transaction to an address in a secure region
+    1. Confirm that `SLVERR` is asserted
+    1. Confirm data on `PRDATA` is masked or zeroed (TODO: Maybe this it should be equal to `z`?)
+
+    (2) Attempt *valid read* to secure region  
+    1. Ensure `PPROT[1]` is low (secure)
+    1. Attempt a typical read transaction to an address in a secure region
+    1. Confirm that `SLVERR` is **not** asserted
+    1. Confirm data on `PRDATA` is valid
+
+    (3) Attempt *invalid write* to secure region  
+    1. Perform a *valid read* to an address in a secure region and save retrieved value
+    1. Ensure `PPROT[1]` is high (non-secure)
+    1. Attempt a typical write transaction to the address used above, using a different value than the one retrieved (maybe simply modify the retrieved value).
+    1. Confirm that `SLVERR` is asserted
+    1. Perform a *valid read* to the same address and save retrieved value. Confirm the newly retrieved value is the same as the original retrieved value.
+
+    (4) Attempt *valid write* to secure region  
+    1. Perform a *valid read* to an address in a secure region and save retrieved value
+    1. Ensure `PPROT[1]` is low (secure)
+    1. Attempt a typical write transaction to the address used above, using a different value than the one retrieved (maybe simply modify the retrieved value).
+    1. Confirm that `SLVERR` is **not** asserted
+    1. Perform a *valid read* to the same address and save retrieved value. Confirm the newly retrieved value is different from the original retrieved value.
+
+3. **Data or Instruction access** (`PPROT[2]`)
+
+    (1) Attempt *invalid read* to data region  
+    1. Ensure `PPROT[2]` is high (instruction access)
+    1. Attempt a typical read transaction to an address in a data region
+    1. Confirm that `SLVERR` is asserted
+    1. Confirm data on `PRDATA` is masked or zeroed (TODO: Maybe this it should be equal to `z`?)
+
+    (2) Attempt *valid read* to data region  
+    1. Ensure `PPROT[2]` is low (data access)
+    1. Attempt a typical read transaction to an address in a data region
+    1. Confirm that `SLVERR` is **not** asserted
+    1. Confirm data on `PRDATA` is valid
+
+    (3) Attempt *invalid write* to data region  
+    1. Perform a *valid read* to an address in a data region and save retrieved value
+    1. Ensure `PPROT[2]` is high (instruction region)
+    1. Attempt a typical write transaction to the address used above, using a different value than the one retrieved (maybe simply modify the retrieved value).
+    1. Confirm that `SLVERR` is asserted
+    1. Perform a *valid read* to the same address and save retrieved value. Confirm the newly retrieved value is the same as the original retrieved value.
+
+    (4) Attempt *valid write* to data region  
+    1. Perform a *valid read* to an address in a data region and save retrieved value
+    1. Ensure `PPROT[2]` is low (data region)
+    1. Attempt a typical write transaction to the address used above, using a different value than the one retrieved (maybe simply modify the retrieved value).
+    1. Confirm that `SLVERR` is **not** asserted
+    1. Perform a *valid read* to the same address and save retrieved value. Confirm the newly retrieved value is different from the original retrieved value.
+
+    (5) Attempt *invalid read* to instruction region  
+    1. Ensure `PPROT[2]` is low (data access)
+    1. Attempt a typical read transaction to an address in an instruction region
+    1. Confirm that `SLVERR` is asserted
+    1. Confirm data on `PRDATA` is masked or zeroed (TODO: Maybe this it should be equal to `z`?)
+
+    (6) Attempt *valid read* to instruction region  
+    1. Ensure `PPROT[2]` is high (instruction access)
+    1. Attempt a typical read transaction to an address in an instruction region
+    1. Confirm that `SLVERR` is **not** asserted
+    1. Confirm data on `PRDATA` is valid
+
+    (7) Attempt *invalid write* to instruction region  
+    1. Perform a *valid read* to an address in an instruction region and save retrieved value
+    1. Ensure `PPROT[2]` is low (data region)
+    1. Attempt a typical write transaction to the address used above, using a different value than the one retrieved (maybe simply modify the retrieved value).
+    1. Confirm that `SLVERR` is asserted
+    1. Perform a *valid read* to the same address and save retrieved value. Confirm the newly retrieved value is the same as the original retrieved value.
+
+    (8) Attempt *valid write* to instruction region  
+    1. Perform a *valid read* to an address in an instruction region and save retrieved value
+    1. Ensure `PPROT[2]` is high (instruction region)
+    1. Attempt a typical write transaction to the address used above, using a different value than the one retrieved (maybe simply modify the retrieved value).
+    1. Confirm that `SLVERR` is **not** asserted
+    1. Perform a *valid read* to the same address and save retrieved value. Confirm the newly retrieved value is different from the original retrieved value.
