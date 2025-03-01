@@ -34,7 +34,7 @@
       b. Reset to pre-transaction state
     3. Invalid `PADDR`  
       a. From the specification document: "`PADDR` indicates a byte address. `PADDR` is permitted to be unaligned with respect to the data width, but the result is UNPREDICTABLE. For example, a Completer might use the unaligned address, aligned address, or signal an error response"  
-      b. TODO: We should decide what action our completer will take. Maybe the simplest would be for `PSLVERR` to be asserted, and reset to pre-transaction state
+      b. Our completer will be designed to require alignment. For invalid addresses, `PSLVERR` will be asserted, and the perhipheral will be reset to pre-transaction state
 
 1. **Consecutive or concurrent transactions**
 
@@ -60,7 +60,7 @@ Our testing strategy will focus on checking each protection bit with read and wr
     1. Ensure `PPROT[0]` is low
     1. Attempt a typical read transaction to an address in a privileged region
     1. Confirm that `SLVERR` is asserted
-    1. Confirm data on `PRDATA` is masked or zeroed (TODO: Maybe this it should be equal to `z`?)
+    1. Confirm data on `PRDATA` is masked by setting it equal to `z`
 
     (2) Attempt *valid read* to privileged region  
     1. Ensure `PPROT[0]` is high
@@ -88,7 +88,7 @@ Our testing strategy will focus on checking each protection bit with read and wr
     1. Ensure `PPROT[1]` is high (non-secure)
     1. Attempt a typical read transaction to an address in a secure region
     1. Confirm that `SLVERR` is asserted
-    1. Confirm data on `PRDATA` is masked or zeroed (TODO: Maybe this it should be equal to `z`?)
+    1. Confirm data on `PRDATA` is masked by setting it equal to `z`
 
     (2) Attempt *valid read* to secure region  
     1. Ensure `PPROT[1]` is low (secure)
@@ -116,7 +116,7 @@ Our testing strategy will focus on checking each protection bit with read and wr
     1. Ensure `PPROT[2]` is high (instruction access)
     1. Attempt a typical read transaction to an address in a data region
     1. Confirm that `SLVERR` is asserted
-    1. Confirm data on `PRDATA` is masked or zeroed (TODO: Maybe this it should be equal to `z`?)
+    1. Confirm data on `PRDATA` is masked by setting it equal to `z`
 
     (2) Attempt *valid read* to data region  
     1. Ensure `PPROT[2]` is low (data access)
@@ -142,7 +142,7 @@ Our testing strategy will focus on checking each protection bit with read and wr
     1. Ensure `PPROT[2]` is low (data access)
     1. Attempt a typical read transaction to an address in an instruction region
     1. Confirm that `SLVERR` is asserted
-    1. Confirm data on `PRDATA` is masked or zeroed (TODO: Maybe this it should be equal to `z`?)
+    1. Confirm data on `PRDATA` is masked by setting it equal to `z`
 
     (6) Attempt *valid read* to instruction region  
     1. Ensure `PPROT[2]` is high (instruction access)
