@@ -25,7 +25,7 @@ parameter ALIGNBITS = $clog2((DATA_WIDTH / 8));     // Calculates number of bits
 function automatic validAlign(
     input [ADDR_WIDTH-1:0] baseAddr
 );
-    logic [ALIGNBITS:0] compareVal = '0;
+    logic [ALIGNBITS-1:0] compareVal = '0;
     return (baseAddr[ALIGNBITS-1:0] === compareVal) ? TRUE : FALSE;
 endfunction: validAlign
 
