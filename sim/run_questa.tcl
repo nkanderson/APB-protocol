@@ -8,7 +8,7 @@ vmap work work
 
 # Compile source files
 vlog -sv "$SRC_DIR/apb_pkg.sv"
-vlog -sv "$SRC_DIR/apb_interface.sv"
+vlog -sv "$SRC_DIR/apb_if.sv"
 vlog -sv "$SRC_DIR/apb_peripheral.sv"
 
 # Compile testbench

@@ -10,7 +10,7 @@ VSIM = vsim -c -do
 
 # Source Files
 SRC_FILES = $(SRC_DIR)/apb_pkg.sv \
-            $(SRC_DIR)/apb_interface.sv \
+            $(SRC_DIR)/apb_if.sv \
             $(SRC_DIR)/apb_peripheral.sv
 
 # Testbench Files
