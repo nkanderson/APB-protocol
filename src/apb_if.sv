@@ -46,8 +46,6 @@ interface apb_if #(
   //
   // Assertions
   //
-  // TODO: Is it possible to disable some of these while we test for
-  // invalid transactions, like when pslverr is asserted?
   // PENABLE should only be high when PSEL is already high
   property psel_before_penable;
     @(posedge pclk) disable iff (!presetn) penable |-> psel;

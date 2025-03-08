@@ -99,6 +99,8 @@ module apb_bridge (
       //
       // **Break the protocol: Deassert PSEL early**
       //
+      // Turn off assertions in sections we know to have invalid actions
+      $assertoff;
       @(posedge apb.pclk);
       apb.psel = 0;
 
@@ -110,6 +112,7 @@ module apb_bridge (
 
       @(posedge apb.pclk);
       apb.penable = 0;
+      $asserton;
     end
 
     // Test Case 2: Unaligned Address
