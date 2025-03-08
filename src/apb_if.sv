@@ -17,8 +17,8 @@ interface apb_if #(
     DATA_WIDTH,
     STRB_WIDTH
 ) (
-    input logic pclk, // APB Clock
-    presetn // Active-low Reset
+    input logic pclk,  // APB Clock
+    presetn  // Active-low Reset
 );
   logic [ADDR_WIDTH-1:0] paddr;  // Address Bus
   logic                  psel;  // Peripheral Select
