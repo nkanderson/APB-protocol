@@ -42,4 +42,41 @@ interface apb_if #(
       input pclk, paddr, psel, penable, pwrite, pwdata, pstrb, pprot,
       output prdata, pready, pslverr
   );
+
+  //
+  // Assertions
+  //
+  // TODO: Is it possible to disable some of these while we test for
+  // invalid transactions, like when pslverr is asserted?
+  // PENABLE should only be high when PSEL is already high
+  property psel_before_penable;
+    @(posedge pclk) disable iff (!presetn) penable |-> psel;
+  endproperty
+  assert property (psel_before_penable)
+  else $error("PENABLE asserted without PSEL being high");
+
+  // PREADY must not be asserted unless PSEL and PENABLE are high
+  property pready_valid;
+    @(posedge pclk) disable iff (!presetn) pready |-> (psel && penable);
+  endproperty
+  assert property (pready_valid)
+  else $error("PREADY asserted without valid PSEL and PENABLE");
+
+  // PWRITE and PSTRB must be stable while PENABLE is asserted
+  property stable_pwrite_pstrb;
+    @(posedge pclk) disable iff (!presetn) penable |-> ##1 ($stable(
+        pwrite
+    ) && $stable(
+        pstrb
+    ));
+  endproperty
+  assert property (stable_pwrite_pstrb)
+  else $error("PWRITE or PSTRB changed while PENABLE asserted");
+
+  // Reset must clear all control signals
+  property reset_clear_signals;
+    @(posedge pclk) !presetn |-> !(psel || penable || pwrite);
+  endproperty
+  assert property (reset_clear_signals)
+  else $error("Control signals not cleared on reset");
 endinterface
