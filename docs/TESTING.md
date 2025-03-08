@@ -14,7 +14,7 @@
     1. Ensure `PSLVERR` is not asserted
 
     In the next clock cycle (**access phase**):
-    1. Maintain `PSELF`, `PWRITE`, and `PADDR`
+    1. Maintain `PSEL`, `PWRITE`, and `PADDR`
     1. Assert `PENABLE` signal
     1. Wait until `PREADY` is asserted by the peripheral
       a. Number of cycles in wait state should not exceed number of cycles `PREADY` is deasserted
