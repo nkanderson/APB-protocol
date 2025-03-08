@@ -1,10 +1,10 @@
 /*
     apb_peripheral - Source Code for APB Peripheral
-    
+
     ECE 571 - Team 6 Winter 2025
 */
 
-module apb_peripheral 
+module apb_peripheral
 (
     apb_if.peripheral apb  // Connect to APB interface (peripheral side)
 );
@@ -17,7 +17,7 @@ module apb_peripheral
   // Variables
   logic err;
 
-  // Internal storage 
+  // Internal storage
   logic [31:0] reg_mem[REG_ITEMS];
 
   // FSM
@@ -31,10 +31,10 @@ module apb_peripheral
       err <= 1'b0;
       currState <= IDLE;
     end else begin
-      // Reset any errors present
-      if (err)
+      // Reset any errors present only during ACCESS
+      if (err && currState == ACCESS)
         err <= 1'b0;
-      
+
       // Push next state to current state
       currState <= nextState;
       end
@@ -44,11 +44,11 @@ module apb_peripheral
   always_comb begin
     // If the err is triggered at any point,
     // Z out PRDATA and drive PSLVERR
-    if (err) begin
-      apb.pready = 1'b0;
+    if (err && currState == ACCESS) begin
+      apb.pready = 1'b1;
       apb.prdata = 'bz;
       apb.pslverr = 1'b1;
-    // Else 
+    // Else
     end else begin
       unique case (currState)
         // For any other state, don't send data yet
@@ -59,10 +59,10 @@ module apb_peripheral
         end
         SETUP: begin
           // Note: if we want to simulate waitstates,
-          // PREADY needs to be deasserted (maybe use 
+          // PREADY needs to be deasserted (maybe use
           // a counter to keep PREADY deasserted for
           // x number of cycles)
-          apb.pready = 1'b1;
+          apb.pready = 1'b0;
           apb.pslverr = 1'b0;
 
           // TODO: Need write logic here
@@ -77,7 +77,7 @@ module apb_peripheral
           end
         end
         ACCESS: begin
-          apb.pready = 1'b0;
+          apb.pready = 1'b1;
 
         end
       endcase
@@ -90,47 +90,53 @@ module apb_peripheral
     unique case (currState)
       // IDLE: Default state of APB Protocol (no transfer)
       IDLE: begin
-        // Check if device is selected and if the state is 
-        // not in a secondary or subsequent cycle of the APB transfer 
+        // Check if device is selected and if the state is
+        // not in a secondary or subsequent cycle of the APB transfer
         if (apb.psel && !apb.penable) begin
           nextState = SETUP;
-        
+
         // If Requester drives PSEL and penable in Idle state, drive PSLVERR
         end else if (apb.psel && apb.penable) begin
-          nextState = IDLE;
+          nextState = SETUP;
           err = 1'b1;
 
         // Else remain in IDLE mode
         end else begin
           nextState = IDLE;
         end
-      end 
+      end
       // SETUP: a transfer has been sent by REQUESTER
       SETUP: begin
         // Checks for the following errors:
         // - If PSEL signal drops during SETUP
         // - If PADDR is not aligned
-        // - If PENABLE signal drops during SETUP
-        // - (Read) 
-        if (!apb.psel || !validAlign(apb.paddr) || !apb.penable) begin
+        // - If PENABLE signal is asserted during SETUP
+        if (!apb.psel || !validAlign(apb.paddr) || apb.penable) begin
+          nextState = ACCESS;     // Revert to IDLE state
           err = 1'b1;           // Indicate error has occured
-          nextState = IDLE;     // Revert to IDLE state
+
+        // If the requester is ready for access,
+        // the perhiperal will transition to ACCESS
         end else begin
-          // If the requester is ready for access, 
-          // the perhiperal will transition to ACCESS
           nextState = ACCESS;
         end
       end
       // ACCESS: checks for continued chained accesses
       ACCESS: begin
-        // If PSEL still is high, go back to SETUP
-        // for chained reads/writes   
-        if (apb.psel) begin
-          nextState = SETUP;
-
-        // Else return back to IDLE
+        // Check if any waitstates have been inserted
+        if (apb.pready == 0) begin
+          nextState = ACCESS;
+        // Else transfer is good to continue
         end else begin
-          nextState = IDLE;
+          // If PSEL still is high, go back to SETUP
+          // for chained reads/writes
+          if (apb.psel) begin
+            nextState = SETUP;
+
+          // Else return back to IDLE
+          end else begin
+            nextState = IDLE;
+          end
         end
       end
     endcase
