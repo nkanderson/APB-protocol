@@ -8,6 +8,7 @@ module apb_peripheral (
 
     reg [31:0] mem [0:15]; // Simple memory array (16 x 32-bit)
     reg [1:0] state;
+    reg [3:0] wait_counter;  // 4-bit counter to simulate wait states
 
     // State Encoding
     localparam IDLE = 2'b00, SETUP = 2'b01, ENABLE = 2'b10;
@@ -23,6 +24,7 @@ module apb_peripheral (
             state <= IDLE;
             PREADY <= 1'b0;
             PERROR <= 1'b0;
+            wait_counter <= 4'b0;
         end else begin
             case (state)
                 IDLE: begin
@@ -33,7 +35,6 @@ module apb_peripheral (
                     if (PENABLE) state <= ENABLE;
                 end
                 ENABLE: begin
-                    PREADY <= 1'b1;
                     if (PWRITE) begin
                         if (PADDR < 16) begin
                             // Write Operation with Write Strobes
@@ -48,6 +49,17 @@ module apb_peripheral (
                     end else begin
                         PRDATA <= mem[PADDR]; // Read Operation
                         PERROR <= 1'b0;
+                    end
+
+                    // Implementing Wait State Simulation
+                    if (PENABLE && !PREADY) begin
+                        wait_counter <= wait_counter + 1;
+                        if (wait_counter == 4'b1111) begin // Wait state complete
+                            PREADY <= 1'b1;
+                        end
+                    end else begin
+                        PREADY <= 1'b0;
+                        wait_counter <= 4'b0;
                     end
                     state <= IDLE;
                 end
