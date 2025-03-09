@@ -13,13 +13,12 @@ module apb_peripheral (
     localparam IDLE = 2'b00, SETUP = 2'b01, ENABLE = 2'b10;
 
     // Assertions for State Machine
-    // Ensure only valid states are used
     initial begin
         assert (IDLE < SETUP && SETUP < ENABLE)
-            else $error("State encoding is incorrect!");
+            else $fatal("State encoding is incorrect!");
     end
 
-    always @(posedge PCLK or negedge PRESETn) begin
+    always_ff @(posedge PCLK or negedge PRESETn) begin
         if (!PRESETn) begin
             state <= IDLE;
             PREADY <= 1'b0;
@@ -57,22 +56,22 @@ module apb_peripheral (
     end
 
     // Assertions for Protocol Compliance
-    always @(posedge PCLK) begin
+    always_ff @(posedge PCLK) begin
         if (PREADY) begin
             assert (state == ENABLE)
-                else $error("PREADY active outside ENABLE state!");
+                else $fatal("PREADY active outside ENABLE state!");
         end
 
         // Ensure PERROR is only high on invalid addresses
         if (PADDR >= 16) begin
             assert (PERROR == 1'b1)
-                else $error("PERROR not asserted on invalid address!");
+                else $fatal("PERROR not asserted on invalid address!");
         end
 
         // Check that memory is not written when PWRITE is low
         if (!PWRITE && PSEL && PENABLE) begin
             assert (PRDATA == mem[PADDR])
-                else $error("Read data mismatch!");
+                else $fatal("Read data mismatch!");
         end
     end
 
