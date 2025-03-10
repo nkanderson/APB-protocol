@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////////
-// apb_interface.sv - Interface for APB bridge and peripheral
+// apb_if.sv - Interface for APB bridge and peripheral
 //
 // Description:
 // ------------
@@ -29,7 +29,11 @@ interface apb_if #(
   logic [DATA_WIDTH-1:0] prdata;  // Read Data
   logic                  pready;  // Ready Signal
   logic                  pslverr;  // Peripheral Error
+<<<<<<< HEAD
   logic [           2:0] pprot;  // Protection Unit Signals
+=======
+  logic [2:0]            pprot;  // Protection Unit Signals
+>>>>>>> 65beafad9c02899fc33bafbcd3e598984067994d
 
   // APB bridge
   modport bridge(
