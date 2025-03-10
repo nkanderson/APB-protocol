@@ -42,47 +42,39 @@ module apb_peripheral
 
   // Output Logic
   always_comb begin
-    // If the err is triggered at any point,
-    // Z out PRDATA and drive PSLVERR
-    if (err && currState == ACCESS) begin
-      apb.pready = 1'b1;
-      apb.prdata = 'bz;
-      apb.pslverr = 1'b1;
-    // Else
-    end else begin
-      unique case (currState)
-        // For any other state, don't send data yet
-        IDLE: begin
-          apb.pready = 1'b0;
+    unique case (currState)
+      // For any other state, don't send data yet
+      IDLE: begin
+        apb.pready = 1'b0;
+        apb.prdata = 'bz;
+        apb.pslverr = 1'b0;
+      end
+      SETUP: begin
+        // Note: if we want to simulate waitstates,
+        // PREADY needs to be deasserted (maybe use
+        // a counter to keep PREADY deasserted for
+        // x number of cycles)
+        apb.pready = 1'b0;
+        apb.pslverr = 1'b0;
+
+        // TODO: Need write logic here
+        if (apb.pwrite) begin
+
           apb.prdata = 'bz;
-          apb.pslverr = 1'b0;
+
+        // For read transfer, drive PRDATA with the contents
+        // of the reg_mem using PADDR excluding the byte align bits
+        // If err is asserted, drive prdata with Z
+        end else begin
+          apb.prdata = (err) ? 'bz : reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]];
         end
-        SETUP: begin
-          // Note: if we want to simulate waitstates,
-          // PREADY needs to be deasserted (maybe use
-          // a counter to keep PREADY deasserted for
-          // x number of cycles)
-          apb.pready = 1'b0;
-          apb.pslverr = 1'b0;
-
-          // TODO: Need write logic here
-          if (apb.pwrite) begin
-
-            apb.prdata = 'bz;
-
-          // For read transfer, drive PRDATA with the contents
-          // of the reg_mem using PADDR excluding the byte align bits
-          // If err is asserted, drive prdata with Z
-          end else begin
-            apb.prdata = (err) ? 'bz : reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]];
-          end
-        end
-        ACCESS: begin
-          apb.pready = 1'b1;
-
-        end
-      endcase
-    end
+      end
+      ACCESS: begin
+        apb.prdata = 'bz;
+        apb.pready = 1'b1;
+        apb.pslverr = (err) ? 1'b1 : 1'b0;
+      end
+    endcase
   end
 
   // Next State Logic
