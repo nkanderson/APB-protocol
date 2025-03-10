@@ -72,8 +72,9 @@ module apb_peripheral
 
           // For read transfer, drive PRDATA with the contents
           // of the reg_mem using PADDR excluding the byte align bits
+          // If err is asserted, drive prdata with Z
           end else begin
-            apb.prdata = reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]];
+            apb.prdata = (err) ? 'bz : reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]];
           end
         end
         ACCESS: begin
@@ -92,13 +93,9 @@ module apb_peripheral
       IDLE: begin
         // Check if device is selected and if the state is
         // not in a secondary or subsequent cycle of the APB transfer
-        if (apb.psel && !apb.penable) begin
+        if (apb.psel) begin
           nextState = SETUP;
-
-        // If Requester drives PSEL and penable in Idle state, drive PSLVERR
-        end else if (apb.psel && apb.penable) begin
-          nextState = SETUP;
-          err = 1'b1;
+          err = apb.penable ? 1'b1 : 1'b0;
 
         // Else remain in IDLE mode
         end else begin
@@ -112,8 +109,8 @@ module apb_peripheral
         // - If PADDR is not aligned
         // - If PENABLE signal is asserted during SETUP
         if (!apb.psel || !validAlign(apb.paddr) || apb.penable) begin
-          nextState = ACCESS;     // Revert to IDLE state
-          err = 1'b1;           // Indicate error has occured
+          nextState = ACCESS;     // Continue to ACCESS state
+          err = 1'b1;             // Indicate error has occured
 
         // If the requester is ready for access,
         // the perhiperal will transition to ACCESS
