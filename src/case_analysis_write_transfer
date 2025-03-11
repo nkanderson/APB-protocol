@@ -1,0 +1,37 @@
+### **Case Analysis: Write Transfers in AMBA APB Protocol**
+
+#### **1. Setup Phase (First Clock Cycle)**
+- The master asserts `PSEL` to indicate a valid transaction.
+- The `PWRITE` signal is set **high** to indicate a write transfer.
+- A valid address is placed on `PADDR`.
+- `PWDATA` is set to the data to be written.
+- `PENABLE` remains **low**.
+- `PSLVERR` is not asserted.
+
+#### **2. Access Phase (Second Clock Cycle)**
+- The master maintains `PSEL`, `PWRITE`, and `PADDR` values.
+- `PENABLE` is asserted **high**.
+- The slave sets `PREADY` **high** once it is ready to accept data.
+- If `PREADY` is **low**, the master remains in the access phase until `PREADY` is **high**.
+- The data on `PWDATA` is written to the corresponding memory location.
+- If an invalid address is detected, `PSLVERR` is asserted.
+
+#### **3. Transfer Completion**
+- The master deasserts `PSEL` and `PENABLE` after receiving acknowledgment (`PREADY` high).
+- If `PSLVERR` is asserted, the master may trigger an error handling routine.
+
+#### **4. Error Handling Cases**
+- **Invalid Address:** If `PADDR` is out of the valid range, `PSLVERR` is set **high**, and the transfer is not completed.
+- **Write Failure:** If the peripheral does not acknowledge the write request, `PREADY` remains **low**, leading to a stalled transaction.
+
+#### **5. Timing Considerations**
+- The number of wait states should **not exceed the number of cycles PREADY is deasserted**.
+- The master must **not change address or control signals** during the access phase.
+- Once `PREADY` is asserted, the write transfer **must be completed within the same cycle**.
+
+#### **6. Edge Cases**
+- **Repeated Write Requests:** If the same address is written multiple times, the latest value should overwrite the previous one.
+- **Back-to-Back Transfers:** If a new write request follows immediately, `PSEL` can be reasserted without deasserting it between cycles.
+- **Slave Delays:** If a slow peripheral takes multiple cycles to assert `PREADY`, the master must wait appropriately.
+
+This case analysis ensures correct implementation of AMBA APB write transfers and accounts for various edge cases that may arise in real-world scenarios.
