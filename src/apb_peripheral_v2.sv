@@ -1,3 +1,5 @@
+`include "apb_pkg.sv"
+
 module apb_peripheral (
     input wire PCLK, PRESETn, PSEL, PENABLE, PWRITE,
     input wire [31:0] PADDR, PWDATA,
@@ -36,7 +38,7 @@ module apb_peripheral (
                 end
                 ENABLE: begin
                     if (PWRITE) begin
-                        if (PADDR < 16) begin
+                        if (PADDR < MEM_SIZE) begin
                             // Write Operation with Write Strobes
                             if (PSTRB[0]) mem[PADDR][7:0]   <= PWDATA[7:0];
                             if (PSTRB[1]) mem[PADDR][15:8]  <= PWDATA[15:8];
@@ -75,7 +77,7 @@ module apb_peripheral (
         end
 
         // Ensure PERROR is only high on invalid addresses
-        if (PADDR >= 16) begin
+        if (PADDR >= MEM_SIZE) begin
             assert (PERROR == 1'b1)
                 else $fatal("PERROR not asserted on invalid address!");
         end
