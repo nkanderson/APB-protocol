@@ -1,6 +1,6 @@
 /*
     apb_pkg - Package for APB Interface
-    
+
     ECE 571 - Team 6 Winter 2025
 */
 
@@ -9,10 +9,11 @@ package apb_pkg;
 // Possible states in APB protocol
 typedef enum logic [1:0] {IDLE = 2'b00, SETUP = 2'b01, ACCESS = 2'b10, ERROR = 2'b11} state; 
 
+
 // Bus Widths
-parameter ADDR_WIDTH = 16;              // Default: up to 32 bits - byte aligned 
+parameter ADDR_WIDTH = 16;              // Default: up to 32 bits - byte aligned
 parameter DATA_WIDTH = 32;              // Defaults: 8, 16, 32 bits
-parameter STRB_WIDTH = DATA_WIDTH / 8;  // PSTRB[n] corresponds to PWDATA[(8n+7):(8n)] 
+parameter STRB_WIDTH = DATA_WIDTH / 8;  // PSTRB[n] corresponds to PWDATA[(8n+7):(8n)]
 
 // Useful Parameters
 parameter TRUE = 1;
