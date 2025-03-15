@@ -48,6 +48,48 @@
       a. Drive `PWDATA` while ensuring `PWRITE` signal is low  
       b. Should result in a successful read
 
+### Write Transfer
+
+1. **Setup Phase(First Clock Cycle)**
+
+   1. The bridge asserts `PSEL` to indicate a valid transaction.
+   1. The `PWRITE` signal is set **high** to indicate a write transfer.
+   1. A valid address is placed on `PADDR`.
+   1. `PWDATA` is set to the data to be written.
+   1. `PENABLE` remains **low**.
+   1. `PSLVERR` is not asserted.
+
+2. **Access Phase (Second Clock Cycle)**
+
+   1. The bridge maintains `PSEL`, `PWRITE`, and `PADDR` values.
+   1. `PENABLE` is asserted **high**.
+   1. The peripheral sets `PREADY` **high** once it is ready to accept data.
+   1. If `PREADY` is **low**, the bridge remains in the access phase until `PREADY` is **high**.
+   1. The data on `PWDATA` is written to the corresponding memory location.
+   1. If an invalid address is detected, `PSLVERR` is asserted.
+
+3. **Transfer Completion**
+
+   1. The bridge deasserts `PSEL` and `PENABLE` after receiving acknowledgment (`PREADY` high).
+   2. If `PSLVERR` is asserted, the bridge may trigger an error handling routine.
+
+4. **Error Handling Cases** 
+
+   1. **Invalid Address:** If `PADDR` is out of the valid range, `PSLVERR` is set **high**, and the transfer is not completed.
+   2. **Write Failure:** If the peripheral does not acknowledge the write request, `PREADY` remains **low**, leading to a stalled transaction.
+
+5. **Timing Considerations** 
+
+   1. The number of wait states should not exceed the number of cycles PREADY is deasserted.
+   2. The bridge must not change address or control signals during the access phase.
+   3. Once `PREADY` is asserted, the write transfer must be completed within the same cycle.
+
+6. **Edge Cases** 
+
+   1. Repeated Write Requests: If the same address is written multiple times, the latest value should overwrite the previous one.
+   2. Back-to-Back Transfers: If a new write request follows immediately, `PSEL` can be reasserted without deasserting it between cycles.
+   3. Peripheral Delays: If a slow peripheral takes multiple cycles to assert `PREADY`, the bridge must wait appropriately.
+
 ### Protection unit support
 
 Testing the `PPROT` signals will entail a shared memory map between the design under test and the testbench. The memory map will designate specific memory blocks as having certain characteristics. For example, a boot ROM section may be designated as secure. A system configuration section may be privileged access only. There may also be different sections designated as data versus instructions.

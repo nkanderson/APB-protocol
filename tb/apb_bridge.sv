@@ -141,7 +141,11 @@ module apb_bridge (
 
     $display("Invalid Read Test Completed.");
   endtask
+  
+  task test_write();
 
+
+  endtask
 
   task reset_apb();
     // Ensure all signals start with known values
