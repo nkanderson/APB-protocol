@@ -105,7 +105,8 @@ module apb_peripheral
         // - If PSEL signal drops during SETUP
         // - If PADDR is not aligned
         // - If PENABLE signal is not asserted during SETUP
-        if (!apb.psel || !validAlign(apb.paddr) || !apb.penable)
+        // - If PPROT does not match the PPROT given by PADDR
+        if (!apb.psel || !validAlign(apb.paddr) || !apb.penable || getPprot(apb.paddr) !== apb.pprot)
           nextState = ERROR;     // Go to ERROR state
       end
       // ACCESS: checks for continued chained accesses

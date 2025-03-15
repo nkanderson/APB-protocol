@@ -30,5 +30,19 @@ function automatic validAlign(
     return (baseAddr[ALIGNBITS-1:0] === compareVal) ? TRUE : FALSE;
 endfunction: validAlign
 
+// getPprot and getAddrforPprot serve as mapping functions that provide a very basic
+// memory map for the different pprot regions. We'll begin with a single region based
+// on the MSB, which represents a privileged, non-secure, instruction region of memory.
+// This may be extended in the future to accommodate more complex mappings and tests.
+// Returns correct pprot bits for the specified address
+function automatic getPprot(input [ADDR_WIDTH-1:0] addr);
+    return addr[ADDR_WIDTH - 1] ? 3'b111 : 3'd0;
+endfunction: getPprot
+
+// Returns a modified version of the recieved address to map to the specified pprot bits
+function automatic getAddrforPprot(input [2:0] pprot, input [ADDR_WIDTH-1:0] addr);
+    logic [ADDR_WIDTH-1:0] pprot_addr = addr | (1'b1 << (ADDR_WIDTH-1));
+    return pprot == 3'b111 ? pprot_addr : addr;
+endfunction: getAddrforPprot
 
 endpackage
