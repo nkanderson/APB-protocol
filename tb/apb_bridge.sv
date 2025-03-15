@@ -90,6 +90,7 @@ module apb_bridge (
       // Setup phase (1st clock cycle)
       //
       @(posedge apb.pclk);
+      $display("Read Start: %0t", $time);
       apb.psel    = 1;
       apb.pwrite  = 0;
       // Ensure 4-byte alignment
@@ -123,11 +124,10 @@ module apb_bridge (
 
 
       // Deassert signals
-      @(posedge apb.pclk);
       apb.psel    = 0;
       apb.penable = 0;
-
-      $display("APB Read completed in %0d cycles.", wait_cycles);
+      
+      $display("(%0t) APB Read completed in %0d cycles.", $time, wait_cycles);
     end
   endtask
 
@@ -139,6 +139,7 @@ module apb_bridge (
       reset_apb();
       $display("Starting Invalid Read Test: Early PSEL deassertion...");
       @(posedge apb.pclk);
+      $display("Read Start: %0t", $time);
       apb.psel    = 1;
       apb.pwrite  = 0;
       apb.paddr   = 32'h4;
@@ -150,7 +151,6 @@ module apb_bridge (
       //
       // **Break the protocol: Deassert PSEL early**
       //
-      @(posedge apb.pclk);
       apb.psel = 0;
 
       // Wait for PREADY and check PSLVERR
@@ -161,6 +161,7 @@ module apb_bridge (
 
       @(posedge apb.pclk);
       apb.penable = 0;
+      @(posedge apb.pclk);
     end
 
     // Test Case 2: Unaligned Address
@@ -168,6 +169,7 @@ module apb_bridge (
       reset_apb();
       $display("Starting Invalid Read Test: Unaligned Address...");
       @(posedge apb.pclk);
+      $display("Read Start: %0t", $time);
       apb.psel    = 1;
       apb.pwrite  = 0;
       //
@@ -188,6 +190,7 @@ module apb_bridge (
       @(posedge apb.pclk);
       apb.psel    = 0;
       apb.penable = 0;
+      @(posedge apb.pclk);
     end
 
     $display("Invalid Read Test Completed.");

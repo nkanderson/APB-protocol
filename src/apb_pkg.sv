@@ -7,7 +7,8 @@
 package apb_pkg;
 
 // Possible states in APB protocol
-typedef enum {IDLE = 0, SETUP = 1, ACCESS = 2} state;
+typedef enum logic [1:0] {IDLE = 2'b00, SETUP = 2'b01, ACCESS = 2'b10, ERROR = 2'b11} state; 
+
 
 // Bus Widths
 parameter ADDR_WIDTH = 16;              // Default: up to 32 bits - byte aligned
@@ -44,6 +45,5 @@ function automatic getAddrforPprot(input [2:0] pprot, input [ADDR_WIDTH-1:0] add
     logic [ADDR_WIDTH-1:0] pprot_addr = addr | (1'b1 << (ADDR_WIDTH-1));
     return pprot == 3'b111 ? pprot_addr : addr;
 endfunction: getAddrforPprot
-
 
 endpackage
