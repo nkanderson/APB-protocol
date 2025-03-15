@@ -14,6 +14,8 @@ module apb_bridge (
     apb_if.bridge apb
 );
 
+  import apb_pkg::*;
+
   logic [apb.ADDR_WIDTH-1:0] test_addr = {{(apb.ADDR_WIDTH - 4) {1'b0}}, 4'h4};
   logic [apb.DATA_WIDTH-1:0] read_data;
   logic [2:0] pprot;
@@ -92,6 +94,7 @@ module apb_bridge (
       @(posedge apb.pclk);
       $display("Read Start: %0t", $time);
       apb.psel    = 1;
+      apb.pprot   = pprot;
       apb.pwrite  = 0;
       // Ensure 4-byte alignment
       apb.paddr   = addr & ~(32'h3);
@@ -141,6 +144,7 @@ module apb_bridge (
       @(posedge apb.pclk);
       $display("Read Start: %0t", $time);
       apb.psel    = 1;
+      apb.pprot   = '0;
       apb.pwrite  = 0;
       apb.paddr   = 32'h4;
       apb.penable = 0;
@@ -201,6 +205,7 @@ module apb_bridge (
     // Ensure all signals start with known values
     apb.psel    = 0;
     apb.penable = 0;
+    apb.pprot   = '0;
     apb.pwrite  = 0;
     apb.paddr   = 0;
     apb.pwdata  = 0;

@@ -39,11 +39,14 @@ module apb_tb_top;
 
   initial begin
     $display("Starting APB Test...");
+    // Reset with active-low signal, starting high since
+    // the peripheral is looking for a negedge on this signal
+    presetn = 1;
     pclk = 0;
-    // Reset with active-low signal
+    @(posedge pclk);
     presetn = 0;
-    repeat (2) @(posedge pclk);
-    // Release reset
+    @(posedge pclk);
+    // Reset complete
     presetn = 1;
     repeat (2) @(posedge pclk);
   end
