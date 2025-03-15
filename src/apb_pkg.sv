@@ -7,7 +7,7 @@
 package apb_pkg;
 
 // Possible states in APB protocol
-typedef enum {IDLE = 0, SETUP = 1, ACCESS = 2} state; 
+typedef enum logic [1:0] {IDLE = 2'b00, SETUP = 2'b01, ACCESS = 2'b10, ERROR = 2'b11} state; 
 
 // Bus Widths
 parameter ADDR_WIDTH = 16;              // Default: up to 32 bits - byte aligned 

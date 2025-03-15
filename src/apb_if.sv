@@ -39,7 +39,7 @@ interface apb_if #(
 
   // APB peripheral
   modport peripheral(
-      input pclk, paddr, psel, penable, pwrite, pwdata, pstrb, pprot,
+      input pclk, presetn, paddr, psel, penable, pwrite, pwdata, pstrb, pprot,
       output prdata, pready, pslverr
   );
 endinterface
