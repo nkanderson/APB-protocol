@@ -14,10 +14,14 @@ module apb_bridge (
     apb_if.bridge apb
 );
 
+  logic [apb.ADDR_WIDTH-1:0] test_addr = {{(apb.ADDR_WIDTH - 4) {1'b0}}, 4'h4};
+  logic [apb.DATA_WIDTH-1:0] read_data;
+  logic [2:0] pprot;
+  logic [2:0] pprot_bits_invert;
+  logic [apb.ADDR_WIDTH-1:0] pprot_addr;
+
   // Main test sequence
   initial begin
-    logic [apb.DATA_WIDTH-1:0] read_data;
-
     // Wait after reset before starting transactions
     repeat (4) @(posedge apb.pclk);
     $display("Performing APB Read Transaction...");
@@ -25,10 +29,45 @@ module apb_bridge (
     //
     // Read transfer tests
     //
-    test_read(32'h0000_0004, read_data);
+    // Get expected pprot bits based on the test_addr value
+    pprot = getPprot(test_addr);
+    // Test that a basic read from a reset state with correct pprot bits for the address
+    // does not error and returns the data that was read
+    test_read(.addr(test_addr), .pprot(pprot), .should_err(0), .reset(1), .data(read_data));
     $display("Read Data: %h", read_data);
 
     test_invalid_reads();
+
+    //
+    // Protection unit tests
+    //
+    // Use pprot_bits_invert to check the individual pprot bits, one position at a time
+    pprot_bits_invert = 3'b001;
+    // Modify existing test address to ensure it is valid for the specified pprot bits
+    // We'll initially test all pprot bits being high
+    pprot = 3'b111;
+    pprot_addr = getAddrforPprot(pprot, test_addr);
+
+    // First test the base case, where all high pprot bits should succeed for the calculated
+    // pprot_addr based on the mapping logic from apb_pkg
+    test_read(.addr(pprot_addr), .pprot(pprot), .should_err(0), .reset(1), .data(read_data));
+
+    // Test pprot bit 0 (privileged region):
+    // When bit is 0, fails for address in privileged region
+    test_read(.addr(pprot_addr), .pprot(~pprot_bits_invert), .should_err(1), .reset(1),
+              .data(read_data));
+
+    // Test pprot bit 1 (secure region - bit is high for non-secure):
+    pprot_bits_invert = pprot_bits_invert << 1'b1;
+    // When bit is 0, fails for address in non-secure region
+    test_read(.addr(pprot_addr), .pprot(~pprot_bits_invert), .should_err(1), .reset(1),
+              .data(read_data));
+
+    // Test pprot bit 2 (instruction region):
+    pprot_bits_invert = pprot_bits_invert << 1'b1;
+    // When bit is 0, fails for address in instruction region
+    test_read(.addr(pprot_addr), .pprot(~pprot_bits_invert), .should_err(1), .reset(1),
+              .data(read_data));
 
     // Wait a few cycles before finishing
     repeat (4) @(posedge apb.pclk);
@@ -36,10 +75,15 @@ module apb_bridge (
   end
 
   // Task for performing an APB Read transaction
-  task test_read(input logic [apb.ADDR_WIDTH-1:0] addr, output logic [apb.DATA_WIDTH-1:0] data);
-    // NOTE: No reset is performed here so that we can test sequential reads / writes
+  task test_read(input logic [apb.ADDR_WIDTH-1:0] addr, input logic [2:0] pprot,
+                 input logic should_err = 0, input logic reset = 1,
+                 output logic [apb.DATA_WIDTH-1:0] data);
     // Counter for clock cycles waited
     automatic int wait_cycles = 0;
+    // Allow caller to determine whether a reset is performed
+    // here so that we can test sequential reads / writes without
+    // a reset when needed.
+    if (reset) reset_apb();
 
     begin
       //
@@ -67,9 +111,16 @@ module apb_bridge (
       // Then read the data
       data = apb.prdata;
 
-      // Check for peripheral error
-      assert (!apb.pslverr)
-      else $error("APB Read transaction failed: Peripheral error detected.");
+      // Check that the peripheral error was present when an error is expected,
+      // or not present when it should not be
+      if (should_err)
+        assert (apb.pslverr)
+        else
+          $error("APB Read test FAILED: Peripheral error not detected when it should have been.");
+      else
+        assert (!apb.pslverr)
+        else $error("APB Read test FAILED: Unexpected peripheral error.");
+
 
       // Deassert signals
       @(posedge apb.pclk);
