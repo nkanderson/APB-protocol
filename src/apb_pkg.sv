@@ -7,7 +7,7 @@
 package apb_pkg;
 
 // Possible states in APB protocol
-typedef enum logic [1:0] {IDLE = 2'b00, SETUP = 2'b01, ACCESS = 2'b10, ERROR = 2'b11} state; 
+typedef enum logic [1:0] {IDLE = 2'b00, SETUP = 2'b01, ACCESS = 2'b10, ERROR = 2'b11} state;
 
 
 // Bus Widths
@@ -36,12 +36,12 @@ endfunction: validAlign
 // on the MSB, which represents a privileged, non-secure, instruction region of memory.
 // This may be extended in the future to accommodate more complex mappings and tests.
 // Returns correct pprot bits for the specified address
-function automatic getPprot(input [ADDR_WIDTH-1:0] addr);
+function automatic [2:0] getPprot(input [ADDR_WIDTH-1:0] addr);
     return addr[ADDR_WIDTH - 1] ? 3'b111 : 3'd0;
 endfunction: getPprot
 
 // Returns a modified version of the recieved address to map to the specified pprot bits
-function automatic getAddrforPprot(input [2:0] pprot, input [ADDR_WIDTH-1:0] addr);
+function automatic [ADDR_WIDTH-1:0] getAddrforPprot(input [2:0] pprot, input [ADDR_WIDTH-1:0] addr);
     logic [ADDR_WIDTH-1:0] pprot_addr = addr | (1'b1 << (ADDR_WIDTH-1));
     return pprot == 3'b111 ? pprot_addr : addr;
 endfunction: getAddrforPprot
