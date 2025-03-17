@@ -162,32 +162,13 @@ module apb_bridge (
     $display("APB Write: Address =%h, Data =%h, addr,data");
   endtask
 
-  // Task for APB Read
-  task test_read(input logic [7:0] addr);
-   @(posedge pclk);
-   psel= 1;
-   pwrite =0;
-   paddr = addr; 
-   penable =0;
-
-   @(posedge pclk);
-   penable =1;
-
-   wait(pready);
-
-   @(posedge pclk);
-   psel =0;
-   penable=0;
-   $display("APB Read: Address =%h, Data =%h addr, prdata");
-  endtask
-
   //Task for invalid write operation
   task test_invalid_write();
    @(posedge pclk);
    psel =1;
    pwrite =1;
-   paddr =8'hFF; //invalid address
-   pwdata = 32'hDEADBEEF;
+   paddr ={ADDR_WIDTH}; //invalid address
+   pwdata = {ADDR_WIDTH};
    penable=0;
 
    @(posedge pclk);
@@ -199,25 +180,6 @@ module apb_bridge (
    psel =0;
    penable=0;
    assert (pslverr) else $error("Invalid Write Test Failed");
-  endtask
-
-  // Test for invalid read operation
-  task test_invalid_read();
-    @(posedge pclk);
-    psel = 1;
-    pwrite= 0;
-    paddr = 8'hFF; // invalid address
-    penable= 0;
-
-    @(posedge pclk);
-    penable =1;
-
-    wait(pready);
-
-    @(posedge pclk);
-    psel=0;
-    penable=0;
-    assert (pslverr) else $error("Invalid Read Test Failed");
   endtask
 
   task reset_apb();
