@@ -42,4 +42,22 @@ interface apb_if #(
       input pclk, presetn, paddr, psel, penable, pwrite, pwdata, pstrb, pprot,
       output prdata, pready, pslverr
   );
+
+  //
+  // Assertions
+  //
+  // penable should only go high when psel is already high
+  property psel_before_penable;
+    @(posedge pclk) disable iff (!presetn) penable |-> psel;
+  endproperty
+  assert property (psel_before_penable)
+  else $error("penable asserted without psel being high");
+
+  // pready should only go high when psel and penable are both high
+  property pready_valid;
+    @(posedge pclk) disable iff (!presetn) pready |-> (psel && penable);
+  endproperty
+  assert property (pready_valid)
+  else $error("pready asserted without valid psel and penable");
+
 endinterface
