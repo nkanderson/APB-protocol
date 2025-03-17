@@ -38,7 +38,7 @@ module apb_peripheral
       currState <= nextState;
 
       // Write buffer to memory if in write and in ACCESS
-      if (apb.pwrite && (currState == ACCESS))
+      if (apb.pwrite && (currState == SETUP))
         reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]] <= writeBuf;
 
       // Update counter
