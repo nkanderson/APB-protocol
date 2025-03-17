@@ -38,7 +38,7 @@ module apb_peripheral
       currState <= nextState;
 
       // Write buffer to memory if in write and in ACCESS
-      if (apb.write && (currState == ACCESS)) 
+      if (apb.pwrite && (currState == ACCESS))
         reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]] <= writeBuf;
 
       // Update counter
@@ -46,7 +46,7 @@ module apb_peripheral
       end
   end
 
-  assign nextwsCount =  (currState != SETUP) ? numWS :  
+  assign nextwsCount =  (currState != SETUP) ? numWS :
                         (|wsCount) ? wsCount - 1: wsCount;
 
   // Output Logic
@@ -59,8 +59,8 @@ module apb_peripheral
         apb.pslverr = 1'b0;
       end
       SETUP: begin
-        // For write transfer, for each bit of PSTRB, it checks if it 
-        // is high which will drive writeBuf with the corresponding byte 
+        // For write transfer, for each bit of PSTRB, it checks if it
+        // is high which will drive writeBuf with the corresponding byte
         // for that strobe bit. If it is not high, then that section is
         // driven with all Zs.
         if (apb.pwrite) begin
@@ -105,7 +105,7 @@ module apb_peripheral
       // SETUP: a transfer has been sent by REQUESTER
       SETUP: begin
         // If the requester is ready for access and therr,
-        // are no more wait states the peripheral will 
+        // are no more wait states the peripheral will
         // transition to ACCESS
         if (wsCount == 0) begin
           nextState = ACCESS;
