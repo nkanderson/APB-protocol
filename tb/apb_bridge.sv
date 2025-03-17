@@ -143,7 +143,7 @@ module apb_bridge (
   endtask
     
   // Task for performing APB Write
-  task test_write(input logic [7:0]addr,input logic [31:0] data);
+  task test_write(input logic [ADDR_WIDTH-1:0]addr,input logic [31:0] data);
     @(posedge PCLK);
     psel =1;
     pwrite =1;
@@ -167,8 +167,8 @@ module apb_bridge (
    @(posedge pclk);
    psel =1;
    pwrite =1;
-   paddr ={ADDR_WIDTH}; //invalid address
-   pwdata = {ADDR_WIDTH};
+   paddr =8'hFF; //invalid address
+   pwdata = 32'hDEADBEEF;
    penable=0;
 
    @(posedge pclk);
