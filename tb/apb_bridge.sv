@@ -26,12 +26,12 @@ module apb_bridge (
   initial begin
     // Wait after reset before starting transactions
     repeat (4) @(posedge apb.pclk);
-    $display("Performing APB Read Transaction...");
 
     //
     // Read transfer tests
     //
     // Get expected pprot bits based on the test_addr value
+    $display("APB Read transfer tests...");
     pprot = getPprot(test_addr);
     // Test that a basic read from a reset state with correct pprot bits for the address
     // does not error and returns the data that was read
@@ -43,6 +43,7 @@ module apb_bridge (
     //
     // Protection unit tests
     //
+    $display("APB Protection Unit tests...");
     // Use pprot_bits_invert to check the individual pprot bits, one position at a time
     pprot_bits_invert = 3'b001;
     // Modify existing test address to ensure it is valid for the specified pprot bits
@@ -129,7 +130,7 @@ module apb_bridge (
       // Deassert signals
       apb.psel    = 0;
       apb.penable = 0;
-      
+
       $display("(%0t) APB Read completed in %0d cycles.", $time, wait_cycles);
     end
   endtask
@@ -155,6 +156,8 @@ module apb_bridge (
       //
       // **Break the protocol: Deassert PSEL early**
       //
+      // Turn off assertions in sections we know to have invalid actions
+      $assertoff (2, "apb_tb_top.apb");
       apb.psel = 0;
 
       // Wait for PREADY and check PSLVERR
@@ -166,6 +169,7 @@ module apb_bridge (
       @(posedge apb.pclk);
       apb.penable = 0;
       @(posedge apb.pclk);
+      $asserton (2, "apb_tb_top.apb");
     end
 
     // Test Case 2: Unaligned Address
