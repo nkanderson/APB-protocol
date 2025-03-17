@@ -15,7 +15,6 @@ module apb_peripheral
   // FSM Variables
   state currState, nextState;
   logic [5:0] wsCount, nextwsCount;
-  logic [DATA_WIDTH-1:0] writeBuf;
 
   // Internal storage 
   // ([Bits per byte] reg_mem [number of rows][number of columns (proportional to 2**(number of strobe bits)])
