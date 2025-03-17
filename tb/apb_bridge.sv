@@ -18,6 +18,7 @@ module apb_bridge (
 
   logic [apb.ADDR_WIDTH-1:0] test_addr = {{(apb.ADDR_WIDTH - 4) {1'b0}}, 4'h4};
   logic [apb.DATA_WIDTH-1:0] read_data;
+  logic [apb.DATA_WIDTH-1:0] read_data_initial; // Used to test sparse data writes
   logic [apb.DATA_WIDTH-1:0] write_data;
   logic [2:0] pprot;
   logic [2:0] pprot_bits_invert;
@@ -79,6 +80,17 @@ module apb_bridge (
     pprot = getPprot(test_addr);
     write_data = '1;
     test_write(.addr(test_addr), .pprot(pprot), .should_err(0), .reset(1), .data(write_data));
+    test_read(.addr(test_addr), .pprot(pprot), .should_err(0), .reset(1), .data(read_data));
+    assert (read_data == '1) else $error("Written data not correctly read back.");
+
+    // Test a sparse data write using the strobe signal
+    // We'll write to a different address to test, leave write_data the same (all 1s),
+    // but update the strobe to only write the lowest byte
+    test_addr = test_addr | 8'h80;
+    test_read(.addr(test_addr), .pprot(pprot), .data(read_data_initial));
+    test_write(.addr(test_addr), .pprot(pprot), .data(write_data), .strobe(4'h1));
+    test_read(.addr(test_addr), .pprot(pprot), .data(read_data));
+    assert (read_data == (read_data_initial | 4'h1)) else $error("Sparse data write not correctly read back.");
 
     // Wait a few cycles before finishing
     repeat (4) @(posedge apb.pclk);
@@ -213,7 +225,7 @@ module apb_bridge (
   // Task for performing an APB Write transaction
   task test_write(input logic [apb.ADDR_WIDTH-1:0] addr, input logic [2:0] pprot,
                  input logic should_err = 0, input logic reset = 1,
-                 input logic [apb.DATA_WIDTH-1:0] data);
+                 input logic [apb.DATA_WIDTH-1:0] data, input logic[apb.STRB_WIDTH-1:0] strobe = '1);
     // Counter for clock cycles waited
     automatic int wait_cycles = 0;
     // Allow caller to determine whether a reset is performed
@@ -231,6 +243,7 @@ module apb_bridge (
       apb.pprot   = pprot;
       apb.pwrite  = 1;
       apb.pwdata  = data;
+      apb.pstrb = strobe;
       // Ensure 4-byte alignment
       apb.paddr   = addr & ~(32'h3);
       apb.penable = 0;

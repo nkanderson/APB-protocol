@@ -48,6 +48,7 @@ module apb_peripheral
           end
         end
       end
+
       // Update counter
       wsCount <= nextwsCount;
       end
