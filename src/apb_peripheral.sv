@@ -15,6 +15,7 @@ module apb_peripheral
   // FSM Variables
   state currState, nextState;
   logic [5:0] wsCount, nextwsCount;
+  logic [DATA_WIDTH-1:0] writeBuf;
 
   // Internal storage
   logic [31:0] reg_mem[REG_ITEMS];
@@ -36,6 +37,10 @@ module apb_peripheral
       // Push next state to current state
       currState <= nextState;
 
+      // Write buffer to memory if in write and in ACCESS
+      if (apb.write && (currState == ACCESS)) 
+        reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]] <= writeBuf;
+
       // Update counter
       wsCount <= nextwsCount;
       end
@@ -54,9 +59,15 @@ module apb_peripheral
         apb.pslverr = 1'b0;
       end
       SETUP: begin
-        // TODO: Need write logic here
+        // For write transfer, for each bit of PSTRB, it checks if it 
+        // is high which will drive writeBuf with the corresponding byte 
+        // for that strobe bit. If it is not high, then that section is
+        // driven with all Zs.
         if (apb.pwrite) begin
           apb.prdata = 'bz;
+          for (int i = 0; i < STRB_WIDTH; i++) begin
+            writeBuf[8*i+:8] = apb.pstrb[i] ? apb.pwdata[8*i+:8] : 'bz;
+          end
 
         // For read transfer, drive PRDATA with the contents
         // of the reg_mem using PADDR excluding the byte align bits
