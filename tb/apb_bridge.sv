@@ -18,6 +18,7 @@ module apb_bridge (
 
   logic [apb.ADDR_WIDTH-1:0] test_addr = {{(apb.ADDR_WIDTH - 4) {1'b0}}, 4'h4};
   logic [apb.DATA_WIDTH-1:0] read_data;
+  logic [apb.DATA_WIDTH-1:0] write_data;
   logic [2:0] pprot;
   logic [2:0] pprot_bits_invert;
   logic [apb.ADDR_WIDTH-1:0] pprot_addr;
@@ -70,6 +71,14 @@ module apb_bridge (
     // When bit is 0, fails for address in instruction region
     test_read(.addr(pprot_addr), .pprot(~pprot_bits_invert), .should_err(1), .reset(1),
               .data(read_data));
+
+    //
+    // Write transfer tests
+    //
+    // Reset expected pprot bits based on the test_addr value
+    pprot = getPprot(test_addr);
+    write_data = '1;
+    test_write(.addr(test_addr), .pprot(pprot), .should_err(0), .reset(1), .data(write_data));
 
     // Wait a few cycles before finishing
     repeat (4) @(posedge apb.pclk);
@@ -129,7 +138,7 @@ module apb_bridge (
       // Deassert signals
       apb.psel    = 0;
       apb.penable = 0;
-      
+
       $display("(%0t) APB Read completed in %0d cycles.", $time, wait_cycles);
     end
   endtask
@@ -198,6 +207,64 @@ module apb_bridge (
     end
 
     $display("Invalid Read Test Completed.");
+  endtask
+
+
+  // Task for performing an APB Write transaction
+  task test_write(input logic [apb.ADDR_WIDTH-1:0] addr, input logic [2:0] pprot,
+                 input logic should_err = 0, input logic reset = 1,
+                 input logic [apb.DATA_WIDTH-1:0] data);
+    // Counter for clock cycles waited
+    automatic int wait_cycles = 0;
+    // Allow caller to determine whether a reset is performed
+    // here so that we can test sequential reads / writes without
+    // a reset when needed.
+    if (reset) reset_apb();
+
+    begin
+      //
+      // Setup phase (1st clock cycle)
+      //
+      @(posedge apb.pclk);
+      $display("Write Start: %0t", $time);
+      apb.psel    = 1;
+      apb.pprot   = pprot;
+      apb.pwrite  = 1;
+      apb.pwdata  = data;
+      // Ensure 4-byte alignment
+      apb.paddr   = addr & ~(32'h3);
+      apb.penable = 0;
+
+      //
+      // Access phase (2nd clock cycle)
+      //
+      @(posedge apb.pclk);
+      apb.penable = 1;
+
+      // Wait for `pready` while counting cycles
+      wait_cycles = 0;
+      while (!apb.pready) begin
+        @(posedge apb.pclk);
+        wait_cycles++;
+      end
+
+      // Check that the peripheral error was present when an error is expected,
+      // or not present when it should not be
+      if (should_err)
+        assert (apb.pslverr)
+        else
+          $error("APB Write test FAILED: Peripheral error not detected when it should have been.");
+      else
+        assert (!apb.pslverr)
+        else $error("APB Write test FAILED: Unexpected peripheral error.");
+
+
+      // Deassert signals
+      apb.psel    = 0;
+      apb.penable = 0;
+
+      $display("(%0t) APB Write completed in %0d cycles.", $time, wait_cycles);
+    end
   endtask
 
 
