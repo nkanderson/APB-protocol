@@ -17,15 +17,16 @@ module apb_peripheral
   logic [5:0] wsCount, nextwsCount;
   logic [DATA_WIDTH-1:0] writeBuf;
 
-  // Internal storage
-  logic [31:0] reg_mem[REG_ITEMS];
+  // Internal storage 
+  // ([Bits per byte] reg_mem [number of rows][number of columns (proportional to 2**(number of strobe bits)])
+  logic [7:0] reg_mem [REG_ITEMS][2**ALIGNBITS];
 
   // FSM
   always_ff @(posedge apb.pclk or negedge apb.presetn) begin
     if (!apb.presetn) begin
       // Reset internal registers
-      foreach (reg_mem[i]) begin
-        reg_mem[i] <= '0;  // Set each element to 0
+      foreach (reg_mem[i,j]) begin
+        reg_mem[i][j] <= '0;  // Set each element to 0
       end
 
       // Reset status registers
@@ -37,10 +38,17 @@ module apb_peripheral
       // Push next state to current state
       currState <= nextState;
 
-      // Write buffer to memory if in write and in ACCESS
-      if (apb.pwrite && (currState == ACCESS))
-        reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]] <= writeBuf;
-
+      // For write transfer, for each bit of PSTRB, it checks if it
+      // is high which will drive writeBuf with the corresponding byte
+      // for that strobe bit. If it is not high, then that section is
+      // driven with all Zs.
+      if (apb.pwrite && (currState == SETUP)) begin
+        for (int i = 0; i < 2**ALIGNBITS; i++) begin
+          if (apb.pstrb[i] == 0) begin
+            reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]][i] <= apb.pwdata[8*i+:8];
+          end
+        end
+      end
       // Update counter
       wsCount <= nextwsCount;
       end
@@ -59,21 +67,22 @@ module apb_peripheral
         apb.pslverr = 1'b0;
       end
       SETUP: begin
-        // For write transfer, for each bit of PSTRB, it checks if it
-        // is high which will drive writeBuf with the corresponding byte
-        // for that strobe bit. If it is not high, then that section is
-        // driven with all Zs.
+        // For write transfer, drive PRDATA with all Zs
         if (apb.pwrite) begin
           apb.prdata = 'bz;
-          for (int i = 0; i < STRB_WIDTH; i++) begin
-            writeBuf[8*i+:8] = apb.pstrb[i] ? apb.pwdata[8*i+:8] : 'bz;
-          end
 
         // For read transfer, drive PRDATA with the contents
         // of the reg_mem using PADDR excluding the byte align bits
         // If nextState is ERROR, drive prdata with Z
         end else begin
-          apb.prdata = (nextState == ERROR) ? 'bz : reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]];
+          if (nextState == ERROR) begin
+            apb.prdata = 'bz;
+            end else begin
+              // Drive each byte from a row in the memory array to PRDATA
+              for (int i = 0; i < 2**STRB_WIDTH; i++) begin
+                apb.prdata[8*i+:8] = reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]][i];
+              end
+          end
         end
 
         // Note: to simulate waitstates,
