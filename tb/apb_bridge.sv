@@ -90,7 +90,7 @@ module apb_bridge (
     test_read(.addr(test_addr), .pprot(pprot), .data(read_data_initial));
     test_write(.addr(test_addr), .pprot(pprot), .data(write_data), .strobe(4'h1));
     test_read(.addr(test_addr), .pprot(pprot), .data(read_data));
-    assert (read_data == (read_data_initial | 4'h1)) else $error("Sparse data write not correctly read back.");
+    assert (read_data == (read_data_initial | 8'hFF)) else $error("Sparse data write not correctly read back.");
 
     // Wait a few cycles before finishing
     repeat (4) @(posedge apb.pclk);
