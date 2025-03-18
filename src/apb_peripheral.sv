@@ -39,11 +39,10 @@ module apb_peripheral
 
       // For write transfer, for each bit of PSTRB, it checks if it
       // is high which will drive writeBuf with the corresponding byte
-      // for that strobe bit. If it is not high, then that section is
-      // driven with all Zs.
+      // for that strobe bit. If it is not high, then that section is skipped.
       if (apb.pwrite && (currState == SETUP)) begin
         for (int i = 0; i < 2**ALIGNBITS; i++) begin
-          if (apb.pstrb[i] == 0) begin
+          if (apb.pstrb[i] == 1) begin
             reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]][i] <= apb.pwdata[8*i+:8];
           end
         end
