@@ -16,15 +16,16 @@ module apb_peripheral
   state currState, nextState;
   logic [5:0] wsCount, nextwsCount;
 
-  // Internal storage
-  logic [31:0] reg_mem[REG_ITEMS];
+  // Internal storage 
+  // ([Bits per byte] reg_mem [number of rows][number of columns (proportional to 2**(number of strobe bits)])
+  logic [7:0] reg_mem [REG_ITEMS][2**ALIGNBITS];
 
   // FSM
   always_ff @(posedge apb.pclk or negedge apb.presetn) begin
     if (!apb.presetn) begin
       // Reset internal registers
-      foreach (reg_mem[i]) begin
-        reg_mem[i] <= '0;  // Set each element to 0
+      foreach (reg_mem[i,j]) begin
+        reg_mem[i][j] <= '0;  // Set each element to 0
       end
 
       // Reset status registers
@@ -36,12 +37,23 @@ module apb_peripheral
       // Push next state to current state
       currState <= nextState;
 
+      // For write transfer, for each bit of PSTRB, it checks if it
+      // is high which will drive writeBuf with the corresponding byte
+      // for that strobe bit. If it is not high, then that section is skipped.
+      if (apb.pwrite && (currState == SETUP)) begin
+        for (int i = 0; i < 2**ALIGNBITS; i++) begin
+          if (apb.pstrb[i] == 1) begin
+            reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]][i] <= apb.pwdata[8*i+:8];
+          end
+        end
+      end
+
       // Update counter
       wsCount <= nextwsCount;
       end
   end
 
-  assign nextwsCount =  (currState != SETUP) ? numWS :  
+  assign nextwsCount =  (currState != SETUP) ? numWS :
                         (|wsCount) ? wsCount - 1: wsCount;
 
   // Output Logic
@@ -54,7 +66,7 @@ module apb_peripheral
         apb.pslverr = 1'b0;
       end
       SETUP: begin
-        // TODO: Need write logic here
+        // For write transfer, drive PRDATA with all Zs
         if (apb.pwrite) begin
           apb.prdata = 'bz;
 
@@ -62,7 +74,14 @@ module apb_peripheral
         // of the reg_mem using PADDR excluding the byte align bits
         // If nextState is ERROR, drive prdata with Z
         end else begin
-          apb.prdata = (nextState == ERROR) ? 'bz : reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]];
+          if (nextState == ERROR) begin
+            apb.prdata = 'bz;
+            end else begin
+              // Drive each byte from a row in the memory array to PRDATA
+              for (int i = 0; i < 2**STRB_WIDTH; i++) begin
+                apb.prdata[8*i+:8] = reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]][i];
+              end
+          end
         end
 
         // Note: to simulate waitstates,
@@ -94,7 +113,7 @@ module apb_peripheral
       // SETUP: a transfer has been sent by REQUESTER
       SETUP: begin
         // If the requester is ready for access and therr,
-        // are no more wait states the peripheral will 
+        // are no more wait states the peripheral will
         // transition to ACCESS
         if (wsCount == 0) begin
           nextState = ACCESS;
