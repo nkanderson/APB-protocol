@@ -1,0 +1,249 @@
+// 1. psel shouldnt be high when PENABLE is low
+always @(posedge apb.pclk) begin
+    if (!apb.penable) assert (!apb.psel)
+    else $error("PSEL must be low when PENABLE is not asserted.")
+end
+
+// 2. PWRITE should remain stable when PSEL and PENABLE are high
+always @(posedge apb.pclk)begin 
+    if (apb.psel && apb.penable) assert ($stable(apb.pwrite))
+    else $errror("PWRITE changed during transaction!");
+end 
+
+// 3. Reset should clear all control signals
+always @(posedge apb.pclk) begin
+    if (!apb.presetn) assert (apb.psel == 0 && apb.penable ==0 && apb.pwrite ==0)
+    else $error("Control signals not reset properly");
+end
+
+//4. APB transactions to start in SETUP phase
+always @(posedge apb.pclk)begin
+    if (apb.psel && !apb.penable) assert ($past(apb_pkg::state) == apb_pkg::SETUP)
+    else $error("APB transaction must start in SETUP phase!")
+end
+
+//5. Address should always be aligned
+always @(posedge apb.pclk) begin
+    if (apb.psel) assert (apb.paddr[1:0] == 2'b00)
+    else $error("Unaligned address detected!");
+end
+
+// 6. APB transaction follows SETUP -> ACCESS -> IDLE
+property apb_transaction_sequence;
+    @(posedge apb.pclk) disable iff (!apb.presetn)
+    (apb.psel && !apb.penable) | => (apb.penable && apb.psel) ##1 (!apb.psel);
+endproperty
+assert property(apb_transaction_sequence)
+    else $error("APB transaction phase violated!");
+
+//7. PREADY must be asserted within 4 cycles after SETUP phase
+property pready_within_four_cycles;
+    @(posedge apb.pclk) disable iff (!apb.presetn)
+    (apb.psel && !apb.penable) | => ##[1:4] apb.pready;
+endproperty
+assert property (pready_within_four_cycles)
+    else $error("PREADY not asserted within four cycles!");
+
+//8. PENABLE should only be asserted if PSEL was already high
+always @(posedge apb.pclk) begin
+    if (apb.penable) assert ($past(apb.psel))
+    else $error("PENABLE asserted before PSEL was high!");
+end 
+
+//9. Read data should not be unknown when PREADY is high
+always@(posedge apb.pclk) begin
+    if (apb.pready) assert (!$isunknown(apb.prdata))
+    else $error("Read data is unkown when PREADY is high!")
+end
+
+// 10. PSLVERR should be asserted on invalid reads
+always @(posedge apb.pclk)begin 
+    if (apb.psel && apb.penable && !apb.pwrite && !apb.pready)
+    assert (apb.pslverr)
+    else $error("Invalid read operation did not trigger PSLVERR!");
+end
+
+//11. PSLVERR should be asserted on invalid writes
+always @(posedge apb.pclk) begin
+    if (apb.psel && apb.penable && apb.pwrite && !apb.pready)
+    assert(apb.pslverr)
+    else $error("Invalid write operation did not trigger PSLVERR!")
+end
+
+//12. PREADY should be high when a response is given
+property pready_high_on_response;
+    @(posedge apb.pclk) apb.pready;
+endproperty
+assert property (pready_high_on_response)
+    else $error("PREADY should be high when response is given");
+cover property(pready_high_on_response)
+
+//13. PSEL should not be asserted without PENABLE.
+property psel_without_penable;
+    @(posedge apb.pclk) !apb.psel || apb.penable;
+endproperty
+assert property (psel_without_penable)
+    else $error("PSEL should not be asserted without PENABLE");
+cover property (psel_without_penable)
+
+//14. PSEL shoudle be deasserted at the end of transaction
+property psel_desassert_after_transaction;
+    @(posedge apb.pclk) (apb.psel && apb.penable && apb.pready) |=> !apb.psel;
+endproperty
+assert property (psel_desassert_after_transaction)
+    else $error("PSEL should be dessarted after transaction");
+cover property (psel_desassert_after_transaction);
+
+//15. PENABLE should not be held high continuously without a transaction
+property penable_not_stuck_high;
+    @(posedge apb.pclk) apb.penable |=> !apb.penable || (apb.psel && apb.pready);
+endproperty
+assert property (penable_not_stuck_high)
+    else $error("PENABLE should not remain high without an active transaction");
+cover property (penable_not_stuck_high);
+
+//16. PWRITE should not toggle during an active transaction.
+property pwrite_stable_during_transaction;
+    @(posedge apb.pclk) (apb.psel && apb.penable) |=> $stable(apb.pwrite);
+endproperty
+assert property (pwrite_stable_during_transaction)
+    else $error("PWRITE should not toggle during active transaction");
+cover property (pwrite_stable_during_transaction);
+
+//17. PADDR should not change once PSEL is asserted until transaction completes.
+property paddr_stable_during_transaction;
+    @(posedge apb.pclk) apb.psel |=> $stable(apb.paddr);
+endproperty
+assert property (paddr_stable_during_transaction)
+    else $error("PADDR should remain stable throughout a transaction");
+cover property(paddr_stable_during_transaction);
+
+//18. PWDATA should only change before PENABLE is asserted
+property pwdata_stable_after_penable;
+    @(posedge apb.pclk) (apb.psel && !apb.penable) |=> $stable(apb.pwdata);
+endproperty
+assert property (pwdata_stable_after_penable)
+    else $error("PWDATA should be stable after PENABLE is asserted.");
+cover proprety(pwrite_stable_after_penable);
+
+//19. PSTRB should not be active when there is no write transaction.
+property pstrb_low_when_no_write;
+    @(posedge apb.pclk) (!apb.pwrite) |=> (apb.pstrb ==0);
+endproperty
+assert property (pstrb_low_when_no_write)
+    else $error(" PSTRB should be zero when there is no write transaction");
+cover property (pstrb_low_when_no_write)
+
+//20. PSLVERR should not be set during normal transactions. 
+property pslverr_no_error_on_valid_transaction;
+    @(posedge apb.pclk) !(apb.psel && apb.penable && apb.pslverr);
+endproperty
+assert property (pslverr_no_error_on_valid_transaction)
+    else $error("PSLVERR should not be set during normal transactions.")
+cover property (pslverr_no_error_on_valid_transaction)
+
+//21. PSTRB should be nonzero for valid writes
+property pstrb_nonzero_on_write;
+    @(posedge apb.pclk) !apb.pwrite || apb.pstrb !==0;
+endproperty
+assert property (pstrb_nonzero_on_write)
+    else $error("PSTRB should be non zero for all valid writes")
+cover property (pstrb_nonzero_on_write)
+
+//22. PREADY should not be high in the setup phase
+property pready_low_during_setup;
+    @(posedge apb.pclk) (apb.psel && !apb.penable) |-> !apb.pready;
+endproperty
+assert property (pready_low_during_setup)
+    else $error ("PREADY should not be high in SETUP phase");
+cover property(pready_low_during_setup)
+
+//23. PENABLE should only be asserted for one cycle per transaction
+property penable_one_cycle_per_transaction;
+    @(posedge apb.pclk) (apb.psel && apb.penable) |=> !apb.penable || !apb.psel;
+endproperty
+assert property(penable_one_cycle_per_transaction)
+    else $error("PENABLE should only be high for one cycle per transaction");
+cover property(penable_one_cycle_per_transaction);
+
+//24. PSEL should not be deasserted without completing a transaction
+property psel_no_early_deassertion;
+    @(posedge apb.pclk) (apb.psel && !apb.penable) |-> ##1 (apb.penable || !apb.psel);
+endproperty
+assert property (psel_no_early_deassertion)
+    else $error("PSEL should not be deasserted without completing a transaction");
+cover property(psel_no_early_deassertion);
+
+//25. write transactions should not happen when reset is active
+property no_write_during_reset;
+    @(posedge apb.pclk) (!apb.presetn) |-> (!apb.pwrite && !apb.psel);
+endproperty
+assert property (no_write_during_reset)
+    else $error(" Writes should not occur during reset");
+cover property(no_write_during_reset);
+
+//26. read transactions should not happen when reset is active
+property no_read_during_reset;
+    @(posedge apb.pclk) (!apb.presetn) |-> (!apb.psel);
+endproperty
+assert property (no_read_during_reset)
+    else $error("Reads should not occur during reset.");
+cover property(no_read_during_reset)
+
+//27. PWDATA should not be X or X during write transactions
+property pewdata_no_xz_during_write;
+    @(posedge apb.pclk) (apb.psel && apb.penable && apb.write) |-> !$isunknown(apb.pwdata);
+endproperty
+assert property (pewdata_no_xz_during_write)
+    else $error("PWDATA should not be X or Z during a write transaction");
+cover property(pewdata_no_xz_during_write)
+
+//28. PRDATA should be stable when PREADY is high
+property prdata_stable_when_pready;
+    @(posedge apb.pclk) apb.pready |-> $stable(apb.prdata);
+endproperty
+assert property (prdata_stable_when_pready)
+    else $error("PRDATA should not change when PREADY is high");
+cover property (prdata_stable_when_pready)
+
+//29. PRDATA should be zero when no read transaction is happening
+property predata_zero_when_no_read;
+    @(posedge apb.pclk) (!apb.psel || apb.pwrite) |-> (apb.prdata ==='0);
+endproperty
+assert property (predata_zero_when_no_read)
+    else $error("PRDATA should be zero when no read transaction is active");
+cover proerty (predata_zero_when_no_read)
+
+//30. PREADY should not remain low for more than 4 cycles
+property pready_high_within_four_cycles;
+    @(posedge apb.pclk) (apb.psel && apb.penable) |-> ##[1:4] apb.pready;
+endproperty
+assert property (pready_high_within_four_cycles)
+    else $error("PREADY must be asserted within four cycles of ACCESS phase");
+cover property (pready_high_within_four_cycles)
+
+//31. APB should return to IDLE after a transaction
+property apb_returns_to_idle;
+    @(posedge apb.pclk) (apb.psel && apb.penable && apb.pready) |=> !apb.psel;
+endproperty
+asert property (apb_returns_to_idle)
+    else $error("APB should return to IDLE after transaction");
+cover property(apb_returns_to_idle);
+
+//32. PENABLE should not be high during IDLE phase
+property penable_low_in_idle;
+    @(posedge apb.pclk) (!apb.psel) |-> !apb.penable;
+endproperty
+assert property (penable_low_in_idle)
+    else $error("PENABLE should not be asserted in IDLE phase");
+cover property (penable_low_in_idle)
+
+//33. PWRITE should remain same during SETUP and ACCESS phases
+property pwrite_stable_setup_access;
+    @(posedge apb.pclk) (apb.psel && !apb.penable) |=> (apb.psel && apb.penable) |-> $stable(apb.pwrite);
+endproperty
+assert property (pwrite_stable_setup_access)
+    else $error("PWRITE should remain stable during SETUP and ACCESS phases");
+cover property (pwrite_stable_setup_access);
+
+

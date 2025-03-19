@@ -1,0 +1,170 @@
+1.	Constraints (SysemVerilog Assertions)
+Add assertions to apb_if.sv to check protocol violations.
+// PADDR must be byte-aligned
+property addr_alignment;
+    @(posedge pclk) disable iff (!presetn) (psel && enable) |-> validAlign(paddr);
+endproperty
+assert property (addr_alignment)
+else $error (“ APB Address is not aligned”);
+
+//PWRITE should be stable during a transaction
+property pwrite_stable;
+    @(posedge clk) disable iff (!presetn) (psel && penable)  |-> $stable(pwrite);
+endproperty
+assert property (pwrite_stable)
+else $error(“PWRITE changed mid-transaction”);
+
+2.	Functional Coverage
+Create a coverage module apb_coverage.sv:
+module apb_coverage(input apb_if.bride apb);
+      covergroup apb_trans_cg;
+           option.per_instance = 1;
+
+           coverpoint apb.paddr {
+               bins addr_range{} = {[0:2**ADDR_WIDTH-1]};
+           }
+
+           coverpoint apb.write {
+              bins read = {0};
+              bins write = {1};
+}
+
+coverpoint apb.penable {
+ bins setup_phase = {1};
+}
+
+coverpoint apb.pprot {
+     bins privileged = {3’b111};
+     bins unprivileged = {3’b000};
+}
+
+cross apb.pwrite, apb.paddr;
+endgroup
+
+apb_trans_cg cg =  new();
+
+always @(posedge apb.clk)
+    if (apb.sel && apb.penable)
+       cg.sample();
+endmodule
+
+3.	Convert Testbench to UVM-based Code
+We’ll create UVM environment with a sequence, driver, monitor, and scoreboard.
+class apb_transaction extends uvm_sequence_item;
+    rand logic [ADDR_WIDTH-1:0] paddr;
+    rand logic [DATA_WIDTH-1:0] pwdata;
+    rand bit pwrite;
+    constraint addr_align { paddr % STRB_WIDTH == 0; }
+     uvm_object_utils(apb_transaction)
+endclass
+Further implementation will include the driver, monitor, and scoreboard, handling stimulus generation and checking response correctness. 
+
+4.	Implement Optional APB Features: RME, Wake-Up, and User Signaling
+Modify the APB interface to include these optional signals.
+Modify apb_if.sv
+logic rme;               // Retention Memory Enable
+logic wakeup;        // Wake-up signaling
+logic user_sig;       // User-defined signaling
+
+modport bridge (
+           input pclk, present, prdata, pready, pslverr,
+           output paddr, psel, penable, pwrite, pwdata, pstrb, pprot, rme, wakeup, user_sig
+);
+
+modport peripheral (
+           input pclk, presetn, paddr, psel, penable, pwrite, pwdata, pstrb, pprot, rme, wakeup, user_sig, output prdata, pready, pslverr
+);
+
+5.	Support Multiple Memory Sections with Different Privileges
+Modify apb_pkg.sv to define memory regions with distinct access privileges.
+typedef struct {
+    logic [ADDR_WIDTH-1:0] base_addr;
+    logic [ADDR_Width-1:0] size;
+    logic [2:0] privilege;
+} mem_section_t;
+
+parameter mem_section_t MEM_SECTIONS[] = ‘{
+     ‘{base_addr: 16’h0000, size: 16’h1000, privilege: 3’b000}, //Unprivileged
+     ‘{base_addr: 16’h1000, size: 16’h1000, privilege: 3’b111} // Privileged
+};
+
+Modify getPprot function:
+function automatic [2:0] getPprot(input [ADDR_WIDTH-1:0] addr);
+     foreach (MEM_SECTIONS[i])
+          if (addr >= MEM_SECTIONS[i].base_addr && addr < MEM_SECTIONS[i].base_addr + MEM_SECTIONS[i].size) return MEM_SECTIONS[i].privilege;
+return 3’b000;
+endfunction
+
+6.	Expand to Multiple Peripherals Under One APB Bridge
+Modify apb_if.sv to add multiple psel signals.
+parameter NUM_PERIPHERALS = 4;
+logic [NUM_PERIPHERALS-1:0] psel_peripheral;
+modport bridge (
+       output psel_peripheral
+);
+modport peripheral (
+       input psel_peripheral
+);
+Modify APB bridge logic to decode paddr and select the correct the peripheral.
+
+7.	Count Wait States in Tests
+Modify testbench to track pready deassertions.
+int wait_count;
+always @(posedge apb.clk)
+    if (apb.psel && apb.penable && !apb.pready)
+       wait_count++;
+Integrate wait_count into UVM scoreboard.
+
+8. Add Real-Time Clock Synchronization
+Modify apb_peripheral.sv to introduce an RTC.
+logic [31:0] rtc_time;
+always_ff @(posedge apb.pclk)
+    if (!apb.presetn) rtc_time <= 0;
+    else rtc_time <= rtc_time + 1;
+Expose RTC through memory-mapped address.
+
+9.	Develop Advanced Arbitration Mechanism
+Modify APB bridge to support priority-based arbitration.
+typedef struct {
+    logic request;
+    int priority;
+} apb_request_t;
+
+apb_request_t requests[NUM_PERIPHERALS];
+int highest_priority;
+logic [NUM_PERIPHERALS-1:0] grant;
+
+always_comb begin
+    highest_priority = -1;
+    for (int i = 0; i < NUM_Peripherals; i++)
+        if (requests[i].request && requests[i].priority > highest_priority) begin
+grant = 1 << i;
+end
+end
+
+10. Integrate Hardware-Level Performance Monitoring
+Create a performance monitoring unit.
+module apb_perf_monitor(apb_if.bridge apb);
+      int total_transactions;
+int total_errors;
+
+always @(posedge apb.pclk)
+    if (apb.psel && apb.penable) total_transactions++;
+
+always @(posedge apb.pclk)
+    if (apb.plsverr) total_errors++;
+
+initial begin
+   $monitor(“Total Transactions: %0d, Errors: %0d”, total_transactions, total_errors);
+end
+endmodule
+
+
+
+       
+
+
+
+
+
+
