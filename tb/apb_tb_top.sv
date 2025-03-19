@@ -35,7 +35,9 @@ module apb_tb_top;
   apb_bridge bridge(apb.bridge);
 
   // Instantiate APB Peripheral
-  apb_peripheral dut(apb.peripheral);
+  apb_peripheral #(
+    .numWS(apb_pkg::PERIPHERAL_WS)
+  ) dut(apb.peripheral);
 
   initial begin
     $display("Starting APB Test...");
