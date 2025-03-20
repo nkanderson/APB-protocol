@@ -101,9 +101,9 @@ module apb_bridge (
   end
 
   // Task for performing an APB Read transaction
-  task test_read(input logic [apb.ADDR_WIDTH-1:0] addr, input logic [2:0] pprot,
-                 input logic should_err = 0, input logic reset = 1,
-                 output logic [apb.DATA_WIDTH-1:0] data);
+  task automatic test_read(input logic [apb.ADDR_WIDTH-1:0] addr, input logic [2:0] pprot,
+                           input logic should_err = 0, input logic reset = 1,
+                           output logic [apb.DATA_WIDTH-1:0] data);
     // Counter for clock cycles waited
     automatic int wait_cycles = 0;
     // Allow caller to determine whether a reset is performed
@@ -158,7 +158,7 @@ module apb_bridge (
     end
   endtask
 
-  task test_invalid_reads();
+  task automatic test_invalid_reads();
     logic [apb.DATA_WIDTH-1:0] data;
 
     // Test Case 1: Deassert PSEL too early
@@ -229,10 +229,10 @@ module apb_bridge (
 
 
   // Task for performing an APB Write transaction
-  task test_write(input logic [apb.ADDR_WIDTH-1:0] addr, input logic [2:0] pprot,
-                  input logic should_err = 0, input logic reset = 1,
-                  input logic [apb.DATA_WIDTH-1:0] data,
-                  input logic [apb.STRB_WIDTH-1:0] strobe = '1);
+  task automatic test_write(input logic [apb.ADDR_WIDTH-1:0] addr, input logic [2:0] pprot,
+                            input logic should_err = 0, input logic reset = 1,
+                            input logic [apb.DATA_WIDTH-1:0] data,
+                            input logic [apb.STRB_WIDTH-1:0] strobe = '1);
     // Counter for clock cycles waited
     automatic int wait_cycles = 0;
     // Allow caller to determine whether a reset is performed
@@ -288,7 +288,7 @@ module apb_bridge (
   endtask
 
 
-  task reset_apb();
+  task automatic reset_apb();
     // Ensure all signals start with known values
     apb.psel    = 0;
     apb.penable = 0;

@@ -27,8 +27,8 @@ module apb_tb_top;
       .DATA_WIDTH(apb_pkg::DATA_WIDTH),
       .STRB_WIDTH(apb_pkg::STRB_WIDTH)
   ) apb (
-      pclk,
-      presetn
+      .pclk(pclk),
+      .presetn(presetn)
   );
 
   // Instantiate APB Bridge
