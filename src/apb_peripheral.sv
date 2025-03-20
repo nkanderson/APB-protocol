@@ -4,9 +4,9 @@
     ECE 571 - Team 6 Winter 2025
 */
 
-module apb_peripheral
-# (parameter numWS = 0)
-(
+module apb_peripheral #(
+    parameter numWS = 0
+) (
     apb_if.peripheral apb  // Connect to APB interface (peripheral side)
 );
   // Import package
@@ -18,13 +18,13 @@ module apb_peripheral
 
   // Internal storage 
   // ([Bits per byte] reg_mem [number of rows][number of columns (proportional to 2**(number of strobe bits)])
-  logic [7:0] reg_mem [REG_ITEMS][2**ALIGNBITS];
+  logic [7:0] reg_mem[REG_ITEMS][2**ALIGNBITS];
 
   // FSM
   always_ff @(posedge apb.pclk or negedge apb.presetn) begin
     if (!apb.presetn) begin
       // Reset internal registers
-      foreach (reg_mem[i,j]) begin
+      foreach (reg_mem[i, j]) begin
         reg_mem[i][j] <= '0;  // Set each element to 0
       end
 
@@ -32,7 +32,7 @@ module apb_peripheral
       currState <= IDLE;
 
       // Reset counter
-      wsCount <= '0;
+      wsCount   <= '0;
     end else begin
       // Push next state to current state
       currState <= nextState;
@@ -41,7 +41,7 @@ module apb_peripheral
       // is high which will drive writeBuf with the corresponding byte
       // for that strobe bit. If it is not high, then that section is skipped.
       if (apb.pwrite && (currState == SETUP)) begin
-        for (int i = 0; i < 2**ALIGNBITS; i++) begin
+        for (int i = 0; i < 2 ** ALIGNBITS; i++) begin
           if (apb.pstrb[i] == 1) begin
             reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]][i] <= apb.pwdata[8*i+:8];
           end
@@ -50,19 +50,18 @@ module apb_peripheral
 
       // Update counter
       wsCount <= nextwsCount;
-      end
+    end
   end
 
-  assign nextwsCount =  (currState != SETUP) ? numWS :
-                        (|wsCount) ? wsCount - 1: wsCount;
+  assign nextwsCount = (currState != SETUP) ? numWS : (|wsCount) ? wsCount - 1 : wsCount;
 
   // Output Logic
   always_comb begin
     unique case (currState)
       // For any other state, don't send data yet
       IDLE, ACCESS, ERROR: begin
-        apb.prdata = 'bz;
-        apb.pready = 1'b0;
+        apb.prdata  = 'bz;
+        apb.pready  = 1'b0;
         apb.pslverr = 1'b0;
       end
       SETUP: begin
@@ -70,17 +69,17 @@ module apb_peripheral
         if (apb.pwrite) begin
           apb.prdata = 'bz;
 
-        // For read transfer, drive PRDATA with the contents
-        // of the reg_mem using PADDR excluding the byte align bits
-        // If nextState is ERROR, drive prdata with Z
+          // For read transfer, drive PRDATA with the contents
+          // of the reg_mem using PADDR excluding the byte align bits
+          // If nextState is ERROR, drive prdata with Z
         end else begin
           if (nextState == ERROR) begin
             apb.prdata = 'bz;
-            end else begin
-              // Drive each byte from a row in the memory array to PRDATA
-              for (int i = 0; i < 2**STRB_WIDTH; i++) begin
-                apb.prdata[8*i+:8] = reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]][i];
-              end
+          end else begin
+            // Drive each byte from a row in the memory array to PRDATA
+            for (int i = 0; i < 2 ** STRB_WIDTH; i++) begin
+              apb.prdata[8*i+:8] = reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]][i];
+            end
           end
         end
 
@@ -88,7 +87,7 @@ module apb_peripheral
         // PREADY needs to be deasserted (maybe use
         // a counter to keep PREADY deasserted for
         // x number of cycles)
-        apb.pready = (nextState == ACCESS || nextState == ERROR) ? 1'b1 : 1'b0;
+        apb.pready  = (nextState == ACCESS || nextState == ERROR) ? 1'b1 : 1'b0;
         apb.pslverr = (nextState == ERROR) ? 1'b1 : 1'b0;
       end
 
@@ -105,7 +104,7 @@ module apb_peripheral
         if (apb.psel) begin
           nextState = SETUP;
 
-        // Else remain in IDLE mode
+          // Else remain in IDLE mode
         end else begin
           nextState = IDLE;
         end
@@ -125,25 +124,29 @@ module apb_peripheral
         // - If PADDR is not aligned
         // - If PENABLE signal is not asserted during SETUP
         // - If PPROT does not match the PPROT given by PADDR
-        if (!apb.psel || !validAlign(apb.paddr) || !apb.penable || getPprot(apb.paddr) !== apb.pprot)
-          nextState = ERROR;     // Go to ERROR state
+        if (!apb.psel || !validAlign(
+                apb.paddr
+            ) || !apb.penable || getPprot(
+                apb.paddr
+            ) !== apb.pprot)
+          nextState = ERROR;  // Go to ERROR state
       end
       // ACCESS: checks for continued chained accesses
       ACCESS: begin
-          // If PSEL still is high, go back to SETUP
-          // for chained reads/writes
-          if (apb.psel) begin
-            nextState = SETUP;
+        // If PSEL still is high, go back to SETUP
+        // for chained reads/writes
+        if (apb.psel) begin
+          nextState = SETUP;
 
           // Else return back to IDLE
-          end else begin
-            nextState = IDLE;
-          end
-        end
-        // ERROR: alt. state for ACCESS when illegal action
-        // is detected by COMPLETER
-      ERROR: begin
+        end else begin
           nextState = IDLE;
+        end
+      end
+      // ERROR: alt. state for ACCESS when illegal action
+      // is detected by COMPLETER
+      ERROR: begin
+        nextState = IDLE;
       end
     endcase
   end

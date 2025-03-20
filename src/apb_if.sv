@@ -17,8 +17,8 @@ interface apb_if #(
     DATA_WIDTH,
     STRB_WIDTH
 ) (
-    input logic pclk, // APB Clock
-    presetn // Active-low Reset
+    input logic pclk,  // APB Clock
+    presetn  // Active-low Reset
 );
   logic [ADDR_WIDTH-1:0] paddr;  // Address Bus
   logic                  psel;  // Peripheral Select
@@ -29,7 +29,7 @@ interface apb_if #(
   logic [DATA_WIDTH-1:0] prdata;  // Read Data
   logic                  pready;  // Ready Signal
   logic                  pslverr;  // Peripheral Error
-  logic [2:0]            pprot;  // Protection Unit Signals
+  logic            [2:0] pprot;  // Protection Unit Signals
 
   // APB bridge
   modport bridge(
