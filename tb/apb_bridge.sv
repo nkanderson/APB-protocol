@@ -18,7 +18,7 @@ module apb_bridge (
 
   logic [apb.ADDR_WIDTH-1:0] test_addr = {{(apb.ADDR_WIDTH - 4) {1'b0}}, 4'h4};
   logic [apb.DATA_WIDTH-1:0] read_data;
-  logic [apb.DATA_WIDTH-1:0] read_data_initial; // Used to test sparse data writes
+  logic [apb.DATA_WIDTH-1:0] read_data_initial;  // Used to test sparse data writes
   logic [apb.DATA_WIDTH-1:0] write_data;
   logic [2:0] pprot;
   logic [2:0] pprot_bits_invert;
@@ -82,7 +82,8 @@ module apb_bridge (
     write_data = '1;
     test_write(.addr(test_addr), .pprot(pprot), .should_err(0), .reset(1), .data(write_data));
     test_read(.addr(test_addr), .pprot(pprot), .should_err(0), .reset(1), .data(read_data));
-    assert (read_data == '1) else $error("Written data not correctly read back.");
+    assert (read_data == '1)
+    else $error("Written data not correctly read back.");
 
     // Test a sparse data write using the strobe signal
     // We'll write to a different address to test, leave write_data the same (all 1s),
@@ -91,7 +92,8 @@ module apb_bridge (
     test_read(.addr(test_addr), .pprot(pprot), .data(read_data_initial));
     test_write(.addr(test_addr), .pprot(pprot), .data(write_data), .strobe(4'h1));
     test_read(.addr(test_addr), .pprot(pprot), .data(read_data));
-    assert (read_data == (read_data_initial | 8'hFF)) else $error("Sparse data write not correctly read back.");
+    assert (read_data == (read_data_initial | 8'hFF))
+    else $error("Sparse data write not correctly read back.");
 
     // Wait a few cycles before finishing
     repeat (4) @(posedge apb.pclk);
@@ -178,7 +180,7 @@ module apb_bridge (
       // **Break the protocol: Deassert PSEL early**
       //
       // Turn off assertions in sections we know to have invalid actions
-      $assertoff (2, "apb_tb_top.apb");
+      $assertoff(2, "apb_tb_top.apb");
       apb.psel = 0;
 
       // Wait for PREADY and check PSLVERR
@@ -190,7 +192,7 @@ module apb_bridge (
       @(posedge apb.pclk);
       apb.penable = 0;
       @(posedge apb.pclk);
-      $asserton (2, "apb_tb_top.apb");
+      $asserton(2, "apb_tb_top.apb");
     end
 
     // Test Case 2: Unaligned Address
@@ -228,8 +230,9 @@ module apb_bridge (
 
   // Task for performing an APB Write transaction
   task test_write(input logic [apb.ADDR_WIDTH-1:0] addr, input logic [2:0] pprot,
-                 input logic should_err = 0, input logic reset = 1,
-                 input logic [apb.DATA_WIDTH-1:0] data, input logic[apb.STRB_WIDTH-1:0] strobe = '1);
+                  input logic should_err = 0, input logic reset = 1,
+                  input logic [apb.DATA_WIDTH-1:0] data,
+                  input logic [apb.STRB_WIDTH-1:0] strobe = '1);
     // Counter for clock cycles waited
     automatic int wait_cycles = 0;
     // Allow caller to determine whether a reset is performed
