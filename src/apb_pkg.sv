@@ -15,6 +15,9 @@ parameter ADDR_WIDTH = 16;              // Default: up to 32 bits - byte aligned
 parameter DATA_WIDTH = 32;              // Defaults: 8, 16, 32 bits
 parameter STRB_WIDTH = DATA_WIDTH / 8;  // PSTRB[n] corresponds to PWDATA[(8n+7):(8n)]
 
+// Peripheral wait states
+parameter PERIPHERAL_WS = 1;
+
 // Useful Parameters
 parameter TRUE = 1;
 parameter FALSE = 0;
