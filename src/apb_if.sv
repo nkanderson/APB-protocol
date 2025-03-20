@@ -13,9 +13,9 @@
 ////////////////////////////////////////////////////////////////
 
 interface apb_if #(
-    parameter ADDR_WIDTH,
-    DATA_WIDTH,
-    STRB_WIDTH
+    parameter shortint ADDR_WIDTH,
+    shortint DATA_WIDTH,
+    shortint STRB_WIDTH
 ) (
     input logic pclk,  // APB Clock
     presetn  // Active-low Reset

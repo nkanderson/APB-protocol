@@ -5,7 +5,7 @@
 */
 
 module apb_peripheral #(
-    parameter numWS = 0
+    parameter byte NumWS = 0
 ) (
     apb_if.peripheral apb  // Connect to APB interface (peripheral side)
 );
@@ -13,10 +13,10 @@ module apb_peripheral #(
   import apb_pkg::*;
 
   // FSM Variables
-  state currState, nextState;
+  state_t currState, nextState;
   logic [5:0] wsCount, nextwsCount;
 
-  // Internal storage 
+  // Internal storage
   // ([Bits per byte] reg_mem [number of rows][number of columns (proportional to 2**(number of strobe bits)])
   logic [7:0] reg_mem[REG_ITEMS][2**ALIGNBITS];
 
@@ -53,7 +53,7 @@ module apb_peripheral #(
     end
   end
 
-  assign nextwsCount = (currState != SETUP) ? numWS : (|wsCount) ? wsCount - 1 : wsCount;
+  assign nextwsCount = (currState != SETUP) ? NumWS : (|wsCount) ? wsCount - 1 : wsCount;
 
   // Output Logic
   always_comb begin
