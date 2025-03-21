@@ -226,7 +226,46 @@ module apb_bridge (
 
     $display("Invalid Read Test Completed.");
   endtask
+    
+  // Task for performing APB Write
+  task test_write(input logic [ADDR_WIDTH-1:0]addr,input logic [31:0] data);
+    @(posedge PCLK);
+    psel =1;
+    pwrite =1;
+    paddr = addr;
+    pwdata = data;
+    penable =0;
 
+    @(posedge pclk);
+    penable=1;
+
+    wait(pready);
+
+    @(posedge pclk);
+    psel = 0;
+    penable =0;
+    $display("APB Write: Address =%h, Data =%h, addr,data");
+  endtask
+
+  //Task for invalid write operation
+  task test_invalid_write();
+   @(posedge pclk);
+   psel =1;
+   pwrite =1;
+   paddr =8'hFF; //invalid address
+   pwdata = 32'hDEADBEEF;
+   penable=0;
+
+   @(posedge pclk);
+   penable =1;
+
+   wait(pready);
+
+   @(posedge pclk);
+   psel =0;
+   penable=0;
+   assert (pslverr) else $error("Invalid Write Test Failed");
+  endtask
 
   // Task for performing an APB Write transaction
   task test_write(input logic [apb.ADDR_WIDTH-1:0] addr, input logic [2:0] pprot,
