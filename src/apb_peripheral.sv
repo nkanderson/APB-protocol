@@ -1,8 +1,16 @@
-/*
-    apb_peripheral - Source Code for APB Peripheral
-
-    ECE 571 - Team 6 Winter 2025
-*/
+//////////////////////////////////////////////////////////////
+// apb_peripheral.sv - Source Code for APB Peripheral
+//
+// ECE 571 - Team 6 Winter 2025
+//
+// Description:
+// ------------
+// This module simulates the role of the APB completer by
+// acting as an APB peripheral. It waits for transfers such as
+// reads and writes. The top module provides the pclk and
+// presetn signals.
+//
+//////////////////////////////////////////////////////////////
 
 module apb_peripheral
 # (parameter numWS = 0)
@@ -17,7 +25,7 @@ module apb_peripheral
   logic [5:0] wsCount, nextwsCount;
 
   // Internal storage 
-  // ([Bits per byte] reg_mem [number of rows][number of columns (proportional to 2**(number of strobe bits)])
+  // Format: ([Bits per byte] reg_mem [number of rows][number of columns (proportional to 2**(number of strobe bits)])
   logic [7:0] reg_mem [REG_ITEMS][2**ALIGNBITS];
 
   // FSM
@@ -53,6 +61,7 @@ module apb_peripheral
       end
   end
 
+  // Assignment for Counter Register
   assign nextwsCount =  (currState != SETUP) ? numWS :
                         (|wsCount) ? wsCount - 1: wsCount;
 
@@ -70,28 +79,28 @@ module apb_peripheral
         if (apb.pwrite) begin
           apb.prdata = 'bz;
 
-        // For read transfer, drive PRDATA with the contents
-        // of the reg_mem using PADDR excluding the byte align bits
-        // If nextState is ERROR, drive prdata with Z
+        // Else, its a read transfer
         end else begin
+          // If nextState is ERROR, drive PRDATA with Z
           if (nextState == ERROR) begin
             apb.prdata = 'bz;
+
+            // Else, continue with the read transfer
             end else begin
-              // Drive each byte from a row in the memory array to PRDATA
+              // For read transfer, drive PRDATA with the contents
+              // of the row in reg_mem located using PADDR 
               for (int i = 0; i < 2**STRB_WIDTH; i++) begin
                 apb.prdata[8*i+:8] = reg_mem[apb.paddr[ADDR_WIDTH-1:ALIGNBITS]][i];
               end
           end
         end
 
-        // Note: to simulate waitstates,
-        // PREADY needs to be deasserted (maybe use
-        // a counter to keep PREADY deasserted for
-        // x number of cycles)
+        // Assert/De-assert PREADY if nextSTATE is ACCESS or ERROR
         apb.pready = (nextState == ACCESS || nextState == ERROR) ? 1'b1 : 1'b0;
+
+        // Assert/De-assert PERROR if nextSTATE is ERROR
         apb.pslverr = (nextState == ERROR) ? 1'b1 : 1'b0;
       end
-
     endcase
   end
 
@@ -110,24 +119,27 @@ module apb_peripheral
           nextState = IDLE;
         end
       end
+
       // SETUP: a transfer has been sent by REQUESTER
       SETUP: begin
-        // If the requester is ready for access and therr,
-        // are no more wait states the peripheral will
+        // If the requester is ready for access and there
+        // are no more wait states then peripheral will
         // transition to ACCESS
         if (wsCount == 0) begin
           nextState = ACCESS;
         end else begin
           nextState = SETUP;
         end
+
         // Checks for the following errors:
         // - If PSEL signal drops during SETUP
         // - If PADDR is not aligned
         // - If PENABLE signal is not asserted during SETUP
         // - If PPROT does not match the PPROT given by PADDR
         if (!apb.psel || !validAlign(apb.paddr) || !apb.penable || getPprot(apb.paddr) !== apb.pprot)
-          nextState = ERROR;     // Go to ERROR state
+          nextState = ERROR;
       end
+
       // ACCESS: checks for continued chained accesses
       ACCESS: begin
           // If PSEL still is high, go back to SETUP
@@ -139,9 +151,10 @@ module apb_peripheral
           end else begin
             nextState = IDLE;
           end
-        end
-        // ERROR: alt. state for ACCESS when illegal action
-        // is detected by COMPLETER
+      end
+
+      // ERROR: alt. state for ACCESS when illegal action
+      // is detected by the completer
       ERROR: begin
           nextState = IDLE;
       end

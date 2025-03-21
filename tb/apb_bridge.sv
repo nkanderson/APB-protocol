@@ -1,6 +1,8 @@
 //////////////////////////////////////////////////////////////
 // apb_bridge.sv - APB Bridge, which serves as a testbench
 //
+// ECE 571 - Team 6 Winter 2025
+//
 // Description:
 // ------------
 // This module simulates the role of the APB requester by

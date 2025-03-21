@@ -1,21 +1,26 @@
-/*
-    apb_pkg - Package for APB Interface
-
-    ECE 571 - Team 6 Winter 2025
-*/
+//////////////////////////////////////////////////////////////
+// apb_pkg.sv - Package for APB Interface
+//
+// ECE 571 - Team 6 Winter 2025
+//
+// Description:
+// ------------
+// This module provides the parameters, typedef enums, 
+// and functions used in both the APB bridge and peripheral.
+//
+//////////////////////////////////////////////////////////////
 
 package apb_pkg;
 
 // Possible states in APB protocol
 typedef enum logic [1:0] {IDLE = 2'b00, SETUP = 2'b01, ACCESS = 2'b10, ERROR = 2'b11} state;
 
-
 // Bus Widths
 parameter ADDR_WIDTH = 16;              // Default: up to 32 bits - byte aligned
 parameter DATA_WIDTH = 32;              // Defaults: 8, 16, 32 bits
 parameter STRB_WIDTH = DATA_WIDTH / 8;  // PSTRB[n] corresponds to PWDATA[(8n+7):(8n)]
 
-// Peripheral wait states
+// Peripheral Wait States
 parameter PERIPHERAL_WS = 1;
 
 // Useful Parameters
@@ -27,6 +32,9 @@ parameter ALIGNBITS = $clog2((DATA_WIDTH / 8));     // Calculates number of bits
 parameter REG_ITEMS = 2 ** (ADDR_WIDTH - ALIGNBITS);  // Calculates how many rows to create for peripheral
 
 // Tasks/Functions
+
+// validAlign returns TRUE or FALSE depending if the LSBs 
+// of PADDR are 0s or not, specified by the number of ALIGNBITS.
 function automatic validAlign(
     input [ADDR_WIDTH-1:0] baseAddr
 );

@@ -1,6 +1,8 @@
 //////////////////////////////////////////////////////////////
 // apb_if.sv - Interface for APB bridge and peripheral
 //
+// ECE 571 - Team 6 Winter 2025
+//
 // Description:
 // ------------
 // Interface for APB bridge and peripheral. Assumes that a top
